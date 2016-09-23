@@ -644,12 +644,17 @@ function packetMakeStruct(args, noPayload)
 	-- add the specified headers and build the name
 	for _, v in ipairs(args) do
 		local header, member = getHeaderMember(v)
-
-		-- add header
-		str = str .. [[
-		struct ]] .. header .. '_header ' .. member .. [[;
-		]]
-
+		if type(member) == number then
+			-- options
+			str = str .. [[
+			uint8_t ]] .. header .. ' ' .. header .. '[' .. member [[];
+			]]
+		else
+			-- add header
+			str = str .. [[
+			struct ]] .. header .. '_header ' .. member .. [[;
+			]]
+		end
 		-- build name
 		name = name .. "__" .. header .. "_" .. member
 	end
