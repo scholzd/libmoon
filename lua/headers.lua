@@ -105,6 +105,7 @@ ffi.cdef[[
 		uint16_t		cs;
 		union ip4_address	src;
 		union ip4_address	dst;
+		union payload_t		options;
 	 };
 
 	struct __attribute__((__packed__)) ip6_header {
@@ -140,7 +141,7 @@ ffi.cdef[[
 		uint16_t	window;
 		uint16_t	cs;
 		uint16_t	urg;
-		uint32_t	options[];
+		union payload_t	options;
 	};
 	
 	struct __attribute__((__packed__)) vxlan_header {
