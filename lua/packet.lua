@@ -444,12 +444,15 @@ function packetFill(self, namedArgs)
 	local accumulatedLength = 0
 	for i, v in ipairs(headers) do
 		local _, curMember = getHeaderMember(args[i])
+		if type(curMember) == "number" then
+		else
 		local nextHeader = getHeaderMember(args[i + 1])
 		
 		namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength)
 		v:fill(namedArgs, curMember) 
 
 		accumulatedLength = accumulatedLength + ffi.sizeof(v)
+		end
 	end
 end
 
@@ -558,7 +561,13 @@ function packetSetLength(args)
 				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
 				]]
 		end
-		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header")
+		size = 0
+		if type(member) == "number" then
+			size = member
+		else 
+			size = ffi.sizeof("struct " .. header .. "_header")
+		end
+		accumulatedLength = accumulatedLength + size
 	end
 
 	-- build complete function
@@ -644,10 +653,10 @@ function packetMakeStruct(args, noPayload)
 	-- add the specified headers and build the name
 	for _, v in ipairs(args) do
 		local header, member = getHeaderMember(v)
-		if type(member) == number then
+		if type(member) == "number" then
 			-- options
 			str = str .. [[
-			uint8_t ]] .. header .. ' ' .. header .. '[' .. member [[];
+			uint8_t ]] .. header .. '[' .. member .. [[];
 			]]
 		else
 			-- add header
@@ -689,7 +698,7 @@ function packetMakeStruct(args, noPayload)
 		-- add to list of existing structs
 		pkt.packetStructs[name] = {args}
 
-		log:debug("Created struct %s", name)
+		log:debug("Created struct %s %s", name, str)
 
 		-- return full name and typeof
 		return name, ffi.typeof(name .. "*")
