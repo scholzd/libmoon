@@ -335,7 +335,9 @@ function createStack(...)
 	packet.calculateChecksums = packetCalculateChecksums(args)
 	
 	for _, v in ipairs(args) do
-		local header, member = getHeaderData(v)
+		local data = getHeaderData(v)
+		header = data['proto']
+		member = data['name']
 		-- if the header has a checksum, add a function to calculate it
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
 			local key = 'calculate' .. member:gsub("^.", string.upper) .. 'Checksum'
@@ -352,15 +354,14 @@ function createStack(...)
 end
 
 --- Get the name of the header, the name of the respective member and the length of the variable member
---- @param v Either the name of the header (then the member has the same name), or a table { header, member }
---- @return Name of the header
---- @return Name of the member
+--- @param v Either the name of the header (then the member has the same name), or a table { header, name = member, length = length, subType = type }
+--- @return Table with all data: { proto = header, name = member, length = length, subType = type }
 function getHeaderData(v)
 	if not v then
 		return
 	elseif type(v) == "table" then
 		local header = v[1]
-		local member = v[2]
+		local member = v['name']
 		local subType
 		-- special alias for ethernet
 		if v[1] == "eth" or v[1] == "ethernet" then 
@@ -371,19 +372,20 @@ function getHeaderData(v)
 		if proto[header].defaultType then
 			subType = subType or proto[header].defaultType
 		end
-		return header, member, v['length'], v['subType'] or subType
+		return { proto = header, name = member, length = v['length'], subType = v['subType'] or subType }
 	else
 		-- only the header name is given -> member has same name, no variable length
 		-- special alias for ethernet
 		if v == "ethernet" or v == "eth" then
-			return "ethernet", "eth", nil, "default"
+			return { proto = "ethernet", name = "eth", length = nil, subType = "default" }
 		end
+		-- set default subtype if available
 		local subType
 		if proto[v].defaultType then
 			subType = subType or proto[v].defaultType
 		end
 		-- otherwise header name = member name
-		return v, v, nil, subType
+		return { proto = v, name = v, length = nil, subType = subType }
 	end
 end
 
@@ -465,8 +467,8 @@ function packetFill(self, namedArgs)
 	local args = self:getArgs()
 	local accumulatedLength = 0
 	for i, v in ipairs(headers) do
-		local _, curMember = getHeaderData(args[i])
-		local nextHeader = getHeaderData(args[i + 1])
+		local curMember = getHeaderData(args[i])['name']
+		local nextHeader = getHeaderData(args[i + 1])['proto']
 		
 		namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength, ffi.sizeof(v))
 		v:fill(namedArgs, curMember) 
@@ -483,7 +485,7 @@ function packetGet(self)
 	local namedArgs = {} 
 	local args = self:getArgs()
 	for i, v in ipairs(self:getHeaders()) do 
-		local _, member = getHeaderData(args[i])
+		local member = getHeaderData(args[i])['name']
 		namedArgs = mergeTables(namedArgs, v:get(member)) 
 	end 
 	return namedArgs 
@@ -538,13 +540,16 @@ function packetResolveLastHeader(self)
 		return self
 	else
 		local newName, nextMember
-		nextHeader, nextMember, _, subType = getHeaderData(nextHeader)	
+		local next = getHeaderData(nextHeader)
+		nextHeader = next['proto']
+		nextMember = next['name']
+		nextSubTyp = next['subType']
 		-- we know the next header, append it
 		name = name .. "__" .. nextHeader
 
 		-- if simple struct (headername = membername) already exists we can directly cast
 		--nextMember = nextHeader
-		newName = name .. nextMember .. "_x_" .. (subType or "x")
+		newName = name .. nextMember .. "_x_" .. (nextSubType or "x")
 
 		if not pkt.packetStructs[newName] then
 			-- check if a similar struct with this header order exists
@@ -569,7 +574,9 @@ function packetResolveLastHeader(self)
 			
 				-- build new args information and in the meantime check for duplicates
 				for i, v in ipairs(args) do
-					local header, member = getHeaderData(v)
+					data = getHeaderData(v)
+					header = data['proto']
+					member = data['name']
 					if member == newMember then
 						-- found duplicate, increase counter for newMember and keep checking for this one now
 						counter = counter + 1
@@ -579,14 +586,14 @@ function packetResolveLastHeader(self)
 				end
 
 				-- add new header and member
-				newArgs[#newArgs + 1] = { nextHeader, newMember, subType = subType }
+				newArgs[#newArgs + 1] = { nextHeader, newMember, subType = nextSubType }
 
 				-- create new packet. It is unlikely that exactly this packet type with this made up naming scheme will be used
 				-- Therefore, we don't really want to "safe" the cast function
 				pkt.TMP_PACKET = createStack(unpack(newArgs))
 				
 				-- name of the new packet type
-				newName = newName .. '_' .. newMember .. '_x_' .. (subType or 'x')
+				newName = newName .. '_' .. newMember .. '_x_' .. (nextSubType or 'x')
 			end
 		end
 
@@ -604,7 +611,10 @@ function packetSetLength(args)
 	-- build the setLength functions for all the headers in this packet type
 	local accumulatedLength = 0
 	for _, v in ipairs(args) do
-		local header, member, _, subType = getHeaderData(v)
+		local data = getHeaderData(v)
+		header = data['proto']
+		member = data['name']
+		subTyp = data['subType']
 		header = subType and header .. "_" .. subType or header
 		if header == "ip4" or header == "udp" or header == "ptp" or header == "ipfix" then
 			str = str .. [[
@@ -638,7 +648,9 @@ end
 function packetCalculateChecksums(args)
 	local str = ""
 	for _, v in ipairs(args) do
-		local header, member = getHeaderData(v)
+		local data = getHeaderData(v)
+		header = data['proto']
+		member = data['name']
 		
 		-- if the header has a checksum, call the function
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp"
@@ -745,7 +757,11 @@ function packetMakeStruct(args, noPayload)
 
 	-- add the specified headers and build the name
 	for _, v in ipairs(args) do
-		local header, member, length, subType = getHeaderData(v)
+		local data = getHeaderData(v)
+		header = data['proto']
+		member = data['name']
+		length = data['length']
+		subType = data['subType']
 
 		-- check for duplicate member names as ffi does not crash (it is mostly ignored)
 		if members[member] then
@@ -878,7 +894,7 @@ pkt.getPtpPacket = createStack("eth", "ptp")
 pkt.getUdpPtpPacket = createStack("eth", "ip4", "udp", "ptp")
 
 pkt.getVxlanPacket = createStack("eth", "ip4", "udp", "vxlan")
-pkt.getVxlanEthernetPacket = createStack("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
+pkt.getVxlanEthernetPacket = createStack("eth", "ip4", "udp", "vxlan", { "eth", name = "innerEth" })
 
 pkt.getEsp4Packet = createStack("eth", "ip4", "esp")
 pkt.getEsp6Packet = createStack("eth", "ip6", "esp") 
