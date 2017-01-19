@@ -14,7 +14,7 @@
 -- Remove unnecessary comments in this file (comments inbetween [[...]])
 -- Necessary changes to other files:
 -- - packet.lua: if the header has a length member, adapt packetSetLength; 
--- 				 if the packet has a checksum, adapt packetCreate (loop at end of function) and packetCalculateChecksums
+-- 				 if the packet has a checksum, adapt createStack (loop at end of function) and packetCalculateChecksums
 -- - proto/proto.lua: add PROTO.lua to the list so it gets loaded
 --]]
 local ffi = require "ffi"

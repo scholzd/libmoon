@@ -294,7 +294,7 @@ local packetMakeStruct
 --- @param args list of keywords (see makeStruct)
 --- @return returns the constructor/cast function for this packet
 --- @see packetMakeStruct
-function packetCreate(...)
+function createStack(...)
 	local args = { ... }
 	
 	local packet = {}
@@ -521,7 +521,7 @@ function packetResolveLastHeader(self)
 			else
 				newArgs[#newArgs]["length"] = len
 			end
-			pkt.TMP_PACKET = packetCreate(unpack(newArgs))
+			pkt.TMP_PACKET = createStack(unpack(newArgs))
 			-- build name with len adjusted
 			sub[#sub - 1] = len
 			local newName = table.concat(sub, "_")
@@ -583,7 +583,7 @@ function packetResolveLastHeader(self)
 
 				-- create new packet. It is unlikely that exactly this packet type with this made up naming scheme will be used
 				-- Therefore, we don't really want to "safe" the cast function
-				pkt.TMP_PACKET = packetCreate(unpack(newArgs))
+				pkt.TMP_PACKET = createStack(unpack(newArgs))
 				
 				-- name of the new packet type
 				newName = newName .. '_' .. newMember .. '_x_' .. (subType or 'x')
@@ -821,15 +821,15 @@ ffi.metatype("struct rte_mbuf", pkt)
 ---- Protocol Stacks
 ---------------------------------------------------------------------------
 
-pkt.getRawPacket = packetCreate()
+pkt.getRawPacket = createStack()
 
-pkt.getEthernetPacket = packetCreate("eth")
+pkt.getEthernetPacket = createStack("eth")
 pkt.getEthPacket = pkt.getEthernetPacket
-pkt.getEthernetVlanPacket = packetCreate({"eth", subType = "vlan"})
+pkt.getEthernetVlanPacket = createStack({"eth", subType = "vlan"})
 pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
 
-pkt.getIP4Packet = packetCreate("eth", "ip4") 
-pkt.getIP6Packet = packetCreate("eth", "ip6")
+pkt.getIP4Packet = createStack("eth", "ip4") 
+pkt.getIP6Packet = createStack("eth", "ip6")
 pkt.getIPPacket = function(self, ip4) 
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -839,10 +839,10 @@ pkt.getIPPacket = function(self, ip4)
 	end 
 end   
 
-pkt.getArpPacket = packetCreate("eth", "arp")
+pkt.getArpPacket = createStack("eth", "arp")
 
-pkt.getIcmp4Packet = packetCreate("eth", "ip4", "icmp")
-pkt.getIcmp6Packet = packetCreate("eth", "ip6", "icmp")
+pkt.getIcmp4Packet = createStack("eth", "ip4", "icmp")
+pkt.getIcmp6Packet = createStack("eth", "ip6", "icmp")
 pkt.getIcmpPacket = function(self, ip4)
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -852,8 +852,8 @@ pkt.getIcmpPacket = function(self, ip4)
 	end 
 end   
 
-pkt.getUdp4Packet = packetCreate("eth", "ip4", "udp")
-pkt.getUdp6Packet = packetCreate("eth", "ip6", "udp") 
+pkt.getUdp4Packet = createStack("eth", "ip4", "udp")
+pkt.getUdp6Packet = createStack("eth", "ip6", "udp") 
 pkt.getUdpPacket = function(self, ip4) 
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -863,8 +863,8 @@ pkt.getUdpPacket = function(self, ip4)
 	end 
 end   
 
-pkt.getTcp4Packet = packetCreate("eth", "ip4", "tcp")
-pkt.getTcp6Packet = packetCreate("eth", "ip6", "tcp")
+pkt.getTcp4Packet = createStack("eth", "ip4", "tcp")
+pkt.getTcp6Packet = createStack("eth", "ip6", "tcp")
 pkt.getTcpPacket = function(self, ip4) 
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -874,14 +874,14 @@ pkt.getTcpPacket = function(self, ip4)
 	end 
 end   
 
-pkt.getPtpPacket = packetCreate("eth", "ptp")
-pkt.getUdpPtpPacket = packetCreate("eth", "ip4", "udp", "ptp")
+pkt.getPtpPacket = createStack("eth", "ptp")
+pkt.getUdpPtpPacket = createStack("eth", "ip4", "udp", "ptp")
 
-pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan")
-pkt.getVxlanEthernetPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
+pkt.getVxlanPacket = createStack("eth", "ip4", "udp", "vxlan")
+pkt.getVxlanEthernetPacket = createStack("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
 
-pkt.getEsp4Packet = packetCreate("eth", "ip4", "esp")
-pkt.getEsp6Packet = packetCreate("eth", "ip6", "esp") 
+pkt.getEsp4Packet = createStack("eth", "ip4", "esp")
+pkt.getEsp6Packet = createStack("eth", "ip6", "esp") 
 pkt.getEspPacket = function(self, ip4) 
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -891,8 +891,8 @@ pkt.getEspPacket = function(self, ip4)
 	end 
 end
 
-pkt.getAH4Packet = packetCreate("eth", "ip4", "ah")
-pkt.getAH6Packet = nil --packetCreate("eth", "ip6", "ah6") --TODO: AH6 needs to be implemented
+pkt.getAH4Packet = createStack("eth", "ip4", "ah")
+pkt.getAH6Packet = nil --createStack("eth", "ip6", "ah6") --TODO: AH6 needs to be implemented
 pkt.getAHPacket = function(self, ip4) 
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -902,8 +902,8 @@ pkt.getAHPacket = function(self, ip4)
 	end 
 end
 
-pkt.getDns4Packet = packetCreate('eth', 'ip4', 'udp', 'dns')
-pkt.getDns6Packet = packetCreate('eth', 'ip6', 'udp', 'dns')
+pkt.getDns4Packet = createStack('eth', 'ip4', 'udp', 'dns')
+pkt.getDns6Packet = createStack('eth', 'ip6', 'udp', 'dns')
 pkt.getDnsPacket = function(self, ip4) 
 	ip4 = ip4 == nil or ip4 
 	if ip4 then 
@@ -913,11 +913,11 @@ pkt.getDnsPacket = function(self, ip4)
 	end 
 end
 
-pkt.getSFlowPacket = packetCreate("eth", "ip4", "udp", {"sflow", subType = "ip4"}, "noPayload")
+pkt.getSFlowPacket = createStack("eth", "ip4", "udp", {"sflow", subType = "ip4"}, "noPayload")
 
-pkt.getIpfixPacket = packetCreate("eth", "ip4", "udp", "ipfix")
+pkt.getIpfixPacket = createStack("eth", "ip4", "udp", "ipfix")
 
-pkt.getLacpPacket = packetCreate('eth', 'lacp')
+pkt.getLacpPacket = createStack('eth', 'lacp')
 
 
 return pkt
