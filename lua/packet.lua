@@ -405,7 +405,7 @@ end
 --- @param h header to be returned
 --- @return The member of the packet
 function packetGetHeader(self, h)
-	local _, member = getHeaderData(h)
+	local member = getHeaderData(h)['name']
 	return self[member]
 end
 
@@ -468,7 +468,8 @@ function packetFill(self, namedArgs)
 	local accumulatedLength = 0
 	for i, v in ipairs(headers) do
 		local curMember = getHeaderData(args[i])['name']
-		local nextHeader = getHeaderData(args[i + 1])['proto']
+		local nextHeader = getHeaderData(args[i + 1])
+		nextHeader = nextHeader and nextHeader['proto']
 		
 		namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength, ffi.sizeof(v))
 		v:fill(namedArgs, curMember) 
@@ -543,7 +544,8 @@ function packetResolveLastHeader(self)
 		local next = getHeaderData(nextHeader)
 		nextHeader = next['proto']
 		nextMember = next['name']
-		nextSubTyp = next['subType']
+		nextSubType = next['subType']
+		nextLength = next['length']
 		-- we know the next header, append it
 		name = name .. "__" .. nextHeader
 
@@ -571,7 +573,6 @@ function packetResolveLastHeader(self)
 				local newArgs = {}
 				local counter = 1
 				local newMember = nextMember
-			
 				-- build new args information and in the meantime check for duplicates
 				for i, v in ipairs(args) do
 					data = getHeaderData(v)
@@ -586,7 +587,7 @@ function packetResolveLastHeader(self)
 				end
 
 				-- add new header and member
-				newArgs[#newArgs + 1] = { nextHeader, newMember, subType = nextSubType }
+				newArgs[#newArgs + 1] = { nextHeader, name = newMember, subType = nextSubType, length = nextLength }
 
 				-- create new packet. It is unlikely that exactly this packet type with this made up naming scheme will be used
 				-- Therefore, we don't really want to "safe" the cast function
@@ -765,7 +766,7 @@ function packetMakeStruct(args, noPayload)
 
 		-- check for duplicate member names as ffi does not crash (it is mostly ignored)
 		if members[member] then
-			log:fatal("Member within this struct has same name: %s", member)
+			log:fatal("Member within this struct has same name: %s \n%s", member, str)
 		end
 		members[member] = true
 
