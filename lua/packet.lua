@@ -614,7 +614,7 @@ function packetSetLength(args)
 		local data = getHeaderData(v)
 		header = data['proto']
 		member = data['name']
-		subTyp = data['subType']
+		subType = data['subType']
 		header = subType and header .. "_" .. subType or header
 		if header == "ip4" or header == "udp" or header == "ptp" or header == "ipfix" then
 			str = str .. [[
