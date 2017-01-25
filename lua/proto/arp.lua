@@ -73,21 +73,8 @@ arp.headerFormat = [[
 arp.headerVariableMember = nil
 
 --- Module for arp_header struct
-local arpHeader = initHeader()
+local arpHeader = initHeader(arp.headerFormat)
 arpHeader.__index = arpHeader
-
---- Set the hardware address type.
---- @param int Type as 16 bit integer.
-function arpHeader:setHardwareAddressType(int)
-	int = int or arp.HARDWARE_ADDRESS_TYPE_ETHERNET
-	self.hrd = hton16(int)
-end
-
---- Retrieve the hardware address type.
---- @return Type as 16 bit integer.
-function arpHeader:getHardwareAddressType()
-	return hton16(self.hrd)
-end
 
 --- Retrieve the hardware address type.
 --- @return Type in string format.
@@ -100,19 +87,6 @@ function arpHeader:getHardwareAddressTypeString()
 	end
 end
 	
---- Set the protocol address type.
---- @param int Type as 16 bit integer.
-function arpHeader:setProtoAddressType(int)
-	int = int or arp.PROTO_ADDRESS_TYPE_IP
-	self.pro = hton16(int)
-end
-
---- Retrieve the protocol address type.
---- @return Type as 16 bit integer.
-function arpHeader:getProtoAddressType()
-	return hton16(self.pro)
-end
-
 --- Retrieve the protocol address type.
 --- @return Type in string format.
 function arpHeader:getProtoAddressTypeString()
@@ -122,57 +96,6 @@ function arpHeader:getProtoAddressTypeString()
 	else
 		return format("0x%04x", type)
 	end
-end
-
---- Set the hardware address length.
---- @param int Length as 8 bit integer.
-function arpHeader:setHardwareAddressLength(int)
-	int = int or 6
-	self.hln = int
-end
-
---- Retrieve the hardware address length.
---- @return Length as 8 bit integer.
-function arpHeader:getHardwareAddressLength()
-	return self.hln
-end
-
---- Retrieve the hardware address length.
---- @return Length in string format.
-function arpHeader:getHardwareAddressLengthString()
-	return self:getHardwareAddressLength()
-end
-
---- Set the protocol address length.
---- @param int Length as 8 bit integer.
-function arpHeader:setProtoAddressLength(int)
-	int = int or 4
-	self.pln = int
-end
-
---- Retrieve the protocol address length.
---- @return Length as 8 bit integer.
-function arpHeader:getProtoAddressLength()
-	return self.pln
-end
-
---- Retrieve the protocol address length.
---- @return Length in string format.
-function arpHeader:getProtoAddressLengthString()
-	return self:getProtoAddressLength()
-end
-
---- Set the operation.
---- @param int Operation as 16 bit integer.
-function arpHeader:setOperation(int)
-	int = int or arp.OP_REQUEST
-	self.op = hton16(int)
-end
-
---- Retrieve the operation.
---- @return Operation as 16 bit integer.
-function arpHeader:getOperation()
-	return hton16(self.op)
 end
 
 --- Retrieve the operation.
@@ -297,11 +220,11 @@ function arpHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "arp"
 	
-	self:setHardwareAddressType(args[pre .. "HardwareAddressType"])
-	self:setProtoAddressType(args[pre .. "ProtoAddressType"])
-	self:setHardwareAddressLength(args[pre .. "HardwareAddressLength"])
-	self:setProtoAddressLength(args[pre .. "ProtoAddressLength"])
-	self:setOperation(args[pre .. "Operation"])
+	self:setHardwareAddressType(args[pre .. "HardwareAddressType"] or arp.HARDWARE_ADDRESS_TYPE_ETHERNET)
+	self:setProtoAddressType(args[pre .. "ProtoAddressType"] or arp.PROTO_ADDRESS_TYPE_IP)
+	self:setHardwareAddressLength(args[pre .. "HardwareAddressLength"] or 6)
+	self:setProtoAddressLength(args[pre .. "ProtoAddressLength"] or 4)
+	self:setOperation(args[pre .. "Operation"] or arp.OP_REQUEST)
 
 	local hwSrc = pre .. "HardwareSrc"
 	local hwDst = pre .. "HardwareDst"
