@@ -5,8 +5,6 @@ local resolveNextHeader
 local setDefaultNamedArgs
 local getVariableLength
 local getSubType
-local testing
-
 
 function initHeader(struct)
 	local mod = {}
@@ -73,7 +71,6 @@ end]]
 	mod.setDefaultNamedArgs = setDefaultNamedArgs
 	mod.getVariableLength = getVariableLength
 	mod.getSubType = getSubType
-	mod.testing = testing
 	
 	return setmetatable({}, mod)
 end
