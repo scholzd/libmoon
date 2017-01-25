@@ -82,45 +82,13 @@ esp.headerFormat = [[
 --- Variable sized member
 esp.headerVariableMember = nil
 
-local espHeader = initHeader()
+local espHeader = initHeader(esp.headerFormat)
 espHeader.__index = espHeader
-
---- Set the SPI.
---- @param int SPI of the esp header as A bit integer.
-function espHeader:setSPI(int)
-	int = int or 0
-	self.spi = hton(int)
-end
-
---- Retrieve the SPI.
---- @return SPI as A bit integer.
-function espHeader:getSPI()
-	return hton(self.spi)
-end
 
 --- Retrieve the SPI as string.
 --- @return SPI as string.
 function espHeader:getSPIString()
 	return ("0x%08x"):format(self.spi)
-end
-
---- Set the SQN.
---- @param int SQN of the esp header as A bit integer.
-function espHeader:setSQN(int)
-	int = int or 0
-	self.sqn = hton(int)
-end
-
---- Retrieve the SQN.
---- @return SQN as A bit integer.
-function espHeader:getSQN()
-	return hton(self.sqn)
-end
-
---- Retrieve the SQN as string.
---- @return SQN as string.
-function espHeader:getSQNString()
-	return self:getSQN()
 end
 
 --- Set the IV.
@@ -152,8 +120,8 @@ function espHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "esp"
 
-	self:setSPI(args[pre .. "SPI"])
-	self:setSQN(args[pre .. "SQN"])
+	self:setSPI(args[pre .. "SPI"] or 0)
+	self:setSQN(args[pre .. "SQN"] or 0)
 	self:setIV(args[pre .. "IV"])
 end
 
