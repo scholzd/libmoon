@@ -160,27 +160,8 @@ dns.headerFormat = [[
 --- Variable sized member
 dns.headerVariableMember = body
 
-local dnsHeader = initHeader()
+local dnsHeader = initHeader(dns.headerFormat)
 dnsHeader.__index = dnsHeader
-
---- Set the query id.
---- @param int Id of the dns header as A bit integer.
-function dnsHeader:setId(int)
-	int = int or math.random(10000,65335)
-	self.id = hton16(int)
-end
-
---- Retrieve the id.
---- @return the qurey id as a bit integer.
-function dnsHeader:getId()
-	return hton16(self.id)
-end
-
---- Retrieve the id as string.
---- @return the qurey id as string.
-function dnsHeader:getIdString()
-	return self:getId()
-end
 
 --- Set Question/Response bit: 
 --- 0 Question, 1 = Answer.
@@ -404,84 +385,6 @@ function dnsHeader:getRCodeString()
 end
 
 
---- Set the QDCount.
---- @param int QDCount of the dns header as A bit integer.
-function dnsHeader:setQDCount(int)
-	int = int or 0
-	self.qdcount = hton16(int)
-end
-
---- Retrieve the QDCount.
---- @return QDCount as A bit integer.
-function dnsHeader:getQDCount()
-	return hton16(self.qdcount)
-end
-
---- Retrieve the QDCount as string.
---- @return QDCount as string.
-function dnsHeader:getQDCountString()
-	return self:getQDCount()
-end
-
---- Set the ANCount.
---- @param int ANCount of the dns header as A bit integer.
-function dnsHeader:setANCount(int)
-	int = int or 0
-	self.ancount = hton16(int)
-end
-
---- Retrieve the ANCount.
---- @return ANCount as A bit integer.
-function dnsHeader:getANCount()
-	return hton16(self.ancount)
-end
-
---- Retrieve the ANCount as string.
---- @return ANCount as string.
-function dnsHeader:getANCountString()
-	return self:getANCount()
-end
-
-
---- Set the NSCount.
---- @param int NSCount of the dns header as A bit integer.
-function dnsHeader:setNSCount(int)
-	int = int or 0
-	self.nscount = hton16(int)
-end
-
---- Retrieve the NSCount.
---- @return NSCount as A bit integer.
-function dnsHeader:getNSCount()
-	return hton16(self.nscount)
-end
-
---- Retrieve the NSCount as string.
---- @return NSCount as string.
-function dnsHeader:getNSCountString()
-	return self:getNSCount()
-end
-
-
---- Set the ARCount.
---- @param int ARCount of the dns header as A bit integer.
-function dnsHeader:setARCount(int)
-	int = int or 0
-	self.arcount = hton16(int)
-end
-
---- Retrieve the ARCount.
---- @return ARCount as A bit integer.
-function dnsHeader:getARCount()
-	return hton16(self.arcount)
-end
-
---- Retrieve the ARCount as string.
---- @return ARCount as string.
-function dnsHeader:getARCountString()
-	return self:getARCount()
-end
-
 --- Set the Data for the remaining sections in the DNS Message.
 --function dnsHeader:setMessageContent(...)
 function dnsHeader:setMessageContent(...)
@@ -521,7 +424,7 @@ function dnsHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "dns"
 
-	self:setId(args[pre .. "Id"])
+	self:setId(args[pre .. "Id"] or math.random(10000,65335))
 	if args[pre .. "Resp"] and args[pre .. "Resp"] ~= 0 then
 		self:setQR()
 	end
@@ -539,10 +442,10 @@ function dnsHeader:fill(args, pre)
 		self:setRA()
 	end
 	self:setRCode(args[pre .. "RCode"])
-	self:setQDCount(args[pre .. "QDCount"])
-	self:setANCount(args[pre .. "ANCount"])
-	self:setNSCount(args[pre .. "NSCount"])
-	self:setARCount(args[pre .. "ARCount"])
+	self:setQDCount(args[pre .. "QDCount"] or 0)
+	self:setANCount(args[pre .. "ANCount"] or 0)
+	self:setNSCount(args[pre .. "NSCount"] or 0)
+	self:setARCount(args[pre .. "ARCount"] or 0)
 	self:setMessageContent(args[pre .."MessageContent"])
 end
 
