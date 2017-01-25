@@ -83,21 +83,8 @@ icmp.headerFormat = [[
 icmp.headerVariableMember = "body"
 
 --- Module for icmp_header struct
-local icmpHeader = initHeader()
+local icmpHeader = initHeader(icmp.HeaderFormat)
 icmpHeader.__index = icmpHeader
-
---- Set the type.
---- @param int Type of the icmp header as 8 bit integer.
-function icmpHeader:setType(int)
-	int = int or icmp.ECHO_REQUEST.type
-	self.type = int
-end
-
---- Retrieve the type.
---- @return Type as 8 bit integer.
-function icmpHeader:getType()
-	return self.type
-end
 
 --- Retrieve the type.
 --- does not work for ICMPv6 (ICMPv6 uses different values)
@@ -117,19 +104,6 @@ function icmpHeader:getTypeString()
 	end
 
 	return format("%s (%s)", type, cleartext)
-end
-
---- Set the code.
---- @param int Code of the icmp header as 8 bit integer.
-function icmpHeader:setCode(int)
-	int = int or icmp.ECHO_REQUEST.code
-	self.code = int
-end
-
---- Retrieve the code.
---- @return Code as 8 bit integer.
-function icmpHeader:getCode()
-	return self.code
 end
 
 --- Retrieve the code.
@@ -161,25 +135,12 @@ function icmpHeader:getCodeString()
 end
 
 
---- Set the checksum.
---- @param int Checksum of the icmp header as 16 bit integer.
-function icmpHeader:setChecksum(int)
-	int = int or 0
-	self.cs = hton16(int)
-end
-
 --- Calculate the checksum
 --- @param len Number of bytes that the checksum will be computed over
 function icmpHeader:calculateChecksum(len)
 	len = len or sizeof(self)
 	self:setChecksum(0)
 	self:setChecksum(hton16(checksum(self, len)))
-end
-
---- Retrieve the checksum.
---- @return Checksum as 16 bit integer.
-function icmpHeader:getChecksum()
-	return hton16(self.cs)
 end
 
 --- Retrieve the checksum.
@@ -220,9 +181,9 @@ function icmpHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "icmp"
 
-	self:setType(args[pre .. "Type"])
-	self:setCode(args[pre .. "Code"])
-	self:setChecksum(args[pre .. "Checksum"])
+	self:setType(args[pre .. "Type"] or icmp.ECHO_REQUEST.type)
+	self:setCode(args[pre .. "Code"] or icmp.ECHO_REQUEST.code)
+	self:setChecksum(args[pre .. "Checksum"] or 0)
 	self:setMessageBody(args[pre .. "MessageBody"])
 end
 
