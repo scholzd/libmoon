@@ -94,46 +94,8 @@ ah.headerFormat = [[
 --- Variable sized member
 ah.headerVariableMember = nil
 
-local ahHeader = initHeader()
+local ahHeader = initHeader(ah.headerFormat)
 ahHeader.__index = ahHeader
-
---- Set the SPI.
---- @param int SPI of the ah header as A bit integer.
-function ahHeader:setSPI(int)
-	int = int or 0
-	self.spi = hton(int)
-end
-
---- Retrieve the SPI.
---- @return SPI as A bit integer.
-function ahHeader:getSPI()
-	return hton(self.spi)
-end
-
---- Retrieve the SPI as string.
---- @return SPI as string.
-function ahHeader:getSPIString()
-	return self:getSPI()
-end
-
---- Set the SQN.
---- @param int SQN of the ah header as A bit integer.
-function ahHeader:setSQN(int)
-	int = int or 0
-	self.sqn = hton(int)
-end
-
---- Retrieve the SQN.
---- @return SQN as A bit integer.
-function ahHeader:getSQN()
-	return hton(self.sqn)
-end
-
---- Retrieve the SQN as string.
---- @return SQN as string.
-function ahHeader:getSQNString()
-	return self:getSQN()
-end
 
 --- Set the IV.
 --- @param int IV of the ah header as 'union ipsec_iv'.
@@ -171,25 +133,6 @@ function ahHeader:getICVString()
 	return self.icv:getString(true)
 end
 
---- Set the Next Header.
---- @param int Next Header of the ah header as A bit integer.
-function ahHeader:setNextHeader(int)
-	int = int or 0
-	self.nextHeader = int
-end
-
---- Retrieve the Next Header.
---- @return Next Header as A bit integer.
-function ahHeader:getNextHeader()
-	return self.nextHeader
-end
-
---- Retrieve the Next Header as string.
---- @return Next Header as string.
-function ahHeader:getNextHeaderString()
-	return self:getNextHeader()
-end
-
 --- Set the Length.
 --- @param int Length of the ah header as A bit integer.
 function ahHeader:setLength(int)
@@ -199,18 +142,6 @@ function ahHeader:setLength(int)
 	-- such as for AES-128 its value is 7 for IPv4 and 8 for IPv6.
 	int = int or 7 -- IPv4: 7 = (9-2)
 	self.len = int
-end
-
---- Retrieve the Length.
---- @return Length as A bit integer.
-function ahHeader:getLength()
-	return self.len
-end
-
---- Retrieve the Length as string.
---- @return Length as string.
-function ahHeader:getLengthString()
-	return self:getLength()
 end
 
 --- Set all members of the ah header.
@@ -224,11 +155,11 @@ function ahHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "ah"
 
-	self:setSPI(args[pre .. "SPI"])
-	self:setSQN(args[pre .. "SQN"])
+	self:setSPI(args[pre .. "SPI"] or 0)
+	self:setSQN(args[pre .. "SQN"] or 0)
 	self:setIV(args[pre .. "IV"])
 	self:setICV(args[pre .. "ICV"])
-	self:setNextHeader(args[pre .. "NextHeader"])
+	self:setNextHeader(args[pre .. "NextHeader"] or 0)
 	self:setLength(args[pre .. "Length"])
 end
 
@@ -253,7 +184,9 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function ahHeader:getString()
-	return "AH spi " .. self:getSPIString() .. " sqn " .. self:getSQNString() .. " iv " .. self:getIVString() .. " icv " .. self:getICVString() .. " next_hdr " .. self:getNextHeader() .. " len " .. self:getLength()
+	return "AH spi " .. self:getSPIString() .. " sqn " .. self:getSQNString() .. " iv " 
+		.. self:getIVString() .. " icv " .. self:getICVString() .. " next_hdr " 
+		.. self:getNextHeader() .. " len " .. self:getLength()
 end
 
 --- Resolve which header comes after this one (in a packet)
