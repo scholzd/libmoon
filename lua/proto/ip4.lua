@@ -150,7 +150,7 @@ ip.headerFormat = [[
 ip.headerVariableMember = "options"
 
 --- Module for ip4_header struct
-local ip4Header = initHeader()
+local ip4Header = initHeader(ip.headerFormat)
 
 ip4Header.__index = ip4Header
 
@@ -172,12 +172,6 @@ function ip4Header:getVersion()
 	return band(rshift(self.verihl, 4), 0x0f)
 end
 
---- Retrieve the version.
---- @return Version as string.
-function ip4Header:getVersionString()
-	return self:getVersion()
-end
-
 --- Set the header length.
 --- @param int Length of the ip header (in multiple of 32 bits) as 4 bit integer. Should always be '5'.
 function ip4Header:setHeaderLength(int)
@@ -194,69 +188,6 @@ end
 --- @return Header length as 4 bit integer.
 function ip4Header:getHeaderLength()
 	return band(self.verihl, 0x0f)
-end
-
---- Retrieve the header length.
---- @return Header length as string.
-function ip4Header:getHeaderLengthString()
-	return self:getHeaderLength()
-end
-
---- Set the type of service (TOS).
---- @param int TOS of the ip header as 8 bit integer.
-function ip4Header:setTOS(int)
-	int = int or 0 
-	self.tos = int
-end
-
---- Retrieve the type of service.
---- @return TOS as 8 bit integer.
-function ip4Header:getTOS()
-	return self.tos
-end
-
---- Retrieve the type of service.
---- @return TOS as string.
-function ip4Header:getTOSString()
-	return self:getTOS()
-end
-
---- Set the total length.
---- @param int Length of the packet excluding layer 2. 16 bit integer.
-function ip4Header:setLength(int)
-	int = int or 48	-- with eth + UDP -> minimum 64
-	self.len = hton16(int)
-end
-
---- Retrieve the length.
---- @return Length as 16 bit integer.
-function ip4Header:getLength()
-	return hton16(self.len)
-end
-
---- Retrieve the length.
---- @return Length as string.
-function ip4Header:getLengthString()
-	return self:getLength()
-end
-
---- Set the identification.
---- @param int ID of the ip header as 16 bit integer.
-function ip4Header:setID(int)
-	int = int or 0 
-	self.id = hton16(int)
-end
-
---- Retrieve the identification.
---- @return ID as 16 bit integer.
-function ip4Header:getID()
-	return hton16(self.id)
-end
-
---- Retrieve the identification.
---- @return ID as string.
-function ip4Header:getIDString()
-	return self:getID()
 end
 
 --- Set the flags.
@@ -304,44 +235,6 @@ function ip4Header:getFragment()
 	return band(hton16(self.frag), 0x1fff)
 end
 
---- Retrieve the fragemt. 
---- @return Fragment as string.
-function ip4Header:getFragmentString()
-	return self:getFragment()
-end
-
---- Set the time-to-live (TTL).
---- @param int TTL of the ip header as 8 bit integer.
-function ip4Header:setTTL(int)
-	int = int or 64 
-	self.ttl = int
-end
-
---- Retrieve the time-to-live. 
---- @return TTL as 8 bit integer.
-function ip4Header:getTTL()
-	return self.ttl
-end
-
---- Retrieve the time-to-live. 
---- @return TTL as string.
-function ip4Header:getTTLString()
-	return self:getTTL()
-end
-
---- Set the next layer protocol.
---- @param int Next layer protocol of the ip header as 8 bit integer.
-function ip4Header:setProtocol(int)
-	int = int or ip.PROTO_UDP
-	self.protocol = int
-end
-
---- Retrieve the next layer protocol. 
---- @return Next layer protocol as 8 bit integer.
-function ip4Header:getProtocol()
-	return self.protocol
-end
-
 --- Retrieve the next layer protocol. 
 --- @return Next layer protocol as string.
 function ip4Header:getProtocolString()
@@ -363,21 +256,6 @@ function ip4Header:getProtocolString()
 	end
 	
 	return format("0x%02x %s", proto, cleartext)
-end
-
---- Set the checksum.
---- @param int Checksum of the ip header as 16 bit integer.
---- @see ip4Header:calculateChecksum
---- @see pkt:offloadUdpChecksum
-function ip4Header:setChecksum(int)
-	int = int or 0
-	self.cs = hton16(int)
-end
-
---- Retrieve the checksum. 
---- @return Checksum as 16 bit integer.
-function ip4Header:getChecksum()
-	return hton16(self.cs)
 end
 
 --- Retrieve the checksum. 
@@ -470,14 +348,14 @@ function ip4Header:fill(args, pre)
 	
 	self:setVersion(args[pre .. "Version"])
 	self:setHeaderLength(args[pre .. "HeaderLength"])
-	self:setTOS(args[pre .. "TOS"])
-	self:setLength(args[pre .. "Length"])
-	self:setID(args[pre .. "ID"])
+	self:setTOS(args[pre .. "TOS"] or 0)
+	self:setLength(args[pre .. "Length"] or 48)
+	self:setID(args[pre .. "ID"] or 0)
 	self:setFlags(args[pre .. "Flags"])
 	self:setFragment(args[pre .. "Fragment"])
-	self:setTTL(args[pre .. "TTL"])
-	self:setProtocol(args[pre .. "Protocol"])
-	self:setChecksum(args[pre .. "Checksum"])
+	self:setTTL(args[pre .. "TTL"] or 64)
+	self:setProtocol(args[pre .. "Protocol"] or ip.PROTO_UDP)
+	self:setChecksum(args[pre .. "Checksum"] or 0)
 
 	local src = pre .. "Src"
 	local dst = pre .. "Dst"
