@@ -144,7 +144,7 @@ eth.defaultType = "default"
 
 --- Module for ethernet_header struct
 local etherHeader = initHeader(eth.default.headerFormat)
-local etherVlanHeader = initHeader()
+local etherVlanHeader = initHeader(eth.vlan.headerFormat)
 etherHeader.__index = etherHeader
 etherVlanHeader.__index = etherVlanHeader
 
@@ -188,14 +188,6 @@ end
 
 etherVlanHeader.setDstString = etherHeader.setDstString
 
---- Retrieve the destination MAC address.
---- @return Address in string format.
-function etherHeader:getDstString()
-	return self.dst:getString()
-end
-
-etherVlanHeader.getDstString = etherHeader.getDstString
-
 --- Set the source MAC address.
 --- @param str Address in string format.
 function etherHeader:setSrcString(str)
@@ -212,22 +204,13 @@ end
 
 etherVlanHeader.getSrcString = etherHeader.getSrcString
 
---- Set the EtherType.
---- @param int EtherType as 16 bit integer.
-function etherHeader:setType(int)
-	int = int or eth.TYPE_IP
-	self.type = hton16(int)
+--- Retrieve the destination MAC address.
+--- @return Address in string format.
+function etherHeader:getDstString()
+	return self.dst:getString()
 end
 
-etherVlanHeader.setType = etherHeader.setType
-
---- Retrieve the EtherType.
---- @return EtherType as 16 bit integer.
-function etherHeader:getType()
-	return hton16(self.type)
-end
-
-etherVlanHeader.getType = etherHeader.getType
+etherVlanHeader.getDstString = etherHeader.getDstString
 
 function etherVlanHeader:getVlanTag()
 	return bit.band(hton16(self.vlan_tag), 0xFFF)
@@ -254,6 +237,8 @@ function etherHeader:getTypeString()
 		cleartext = "(PTP)"
 	elseif type == eth.TYPE_LACP then
 		cleartext = "(LACP)"
+	elseif type == eth.TYPE_8021Q then
+		cleartext = "(VLAN)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -297,7 +282,7 @@ function etherHeader:fill(args, pre)
 	elseif type(args[dst]) == "table" and args[dst].id then
 		self:setDstString((args[dst].dev or args[dst]):getMacString())
 	end
-	self:setType(args[pre .. "Type"])
+	self:setType(args[pre .. "Type"] or eth.TYPE_IP)
 end
 
 function etherVlanHeader:fill(args, pre)
@@ -406,9 +391,6 @@ function etherVlanHeader:getSubType()
 	return "vlan"
 end
 
-function etherVlanHeader:testing()
-	print("eth vlan testing")
-end
 
 ----------------------------------------------------------------------------------
 ---- Metatypes
