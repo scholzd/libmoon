@@ -276,63 +276,63 @@ end
 
 
 ----------------------------------------------------------------------------------
----- Create new packet type
+---- Create new stack type
 ----------------------------------------------------------------------------------
 
--- functions of the packet
-local packetGetHeaders
-local packetGetHeader
-local packetDump
-local packetFill
-local packetGet
-local packetResolveLastHeader
-local packetCalculateChecksums
-local packetMakeStruct
+-- functions of the stack
+local stackGetHeaders
+local stackGetHeader
+local stackDump
+local stackFill
+local stackGet
+local stackResolveLastHeader
+local stackCalculateChecksums
+local stackMakeStruct
 
---- Create struct and functions for a new packet.
+--- Create struct and functions for a new stack.
 --- For implemented headers (see proto/) these packets are defined in the section 'Packet struct' of each protocol file
 --- @param args list of keywords (see makeStruct)
---- @return returns the constructor/cast function for this packet
---- @see packetMakeStruct
+--- @return returns the constructor/cast function for this stack
+--- @see stackMakeStruct
 function createStack(...)
 	local args = { ... }
 	
-	local packet = {}
-	packet.__index = packet
+	local stack = {}
+	stack.__index = stack
 	local noPayload = args[#args] == "noPayload"
 	if noPayload then
 		args[#args] = nil
 	end
 	-- create struct
-	local packetName, ctype = packetMakeStruct(args, noPayload)
-	if not packetName then
-		log:warn("Failed to create new packet type.")
+	local stackName, ctype = stackMakeStruct(args, noPayload)
+	if not stackName then
+		log:warn("Failed to create new stack type.")
 		return
 	end
 
-	-- functions of the packet
-	packet.getArgs = function() return args end
+	-- functions of the stack
+	stack.getArgs = function() return args end
 	
-	packet.getName = function() return packetName end
+	stack.getName = function() return stackName end
 
-	packet.getHeaders = packetGetHeaders
+	stack.getHeaders = stackGetHeaders
 
-	packet.getHeader = packetGetHeader 
+	stack.getHeader = stackGetHeader 
 
-	packet.dump = packetDump
+	stack.dump = stackDump
 	
-	packet.fill = packetFill
+	stack.fill = stackFill
 
-	packet.get = packetGet
+	stack.get = stackGet
 
-	packet.resolveLastHeader = packetResolveLastHeader
+	stack.resolveLastHeader = stackResolveLastHeader
 
 	-- runtime critical function, load specific code during runtime
-	packet.setLength = packetSetLength(args)
+	stack.setLength = stackSetLength(args)
 
 	-- functions for manual (not offloaded) checksum calculations
 	-- runtime critical function, load specific code during runtime
-	packet.calculateChecksums = packetCalculateChecksums(args)
+	stack.calculateChecksums = stackCalculateChecksums(args)
 	
 	for _, v in ipairs(args) do
 		local data = getHeaderData(v)
@@ -341,19 +341,19 @@ function createStack(...)
 		-- if the header has a checksum, add a function to calculate it
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
 			local key = 'calculate' .. member:gsub("^.", string.upper) .. 'Checksum'
-			packet[key] = function(self) self:getHeader(v):calculateChecksum() end
+			stack[key] = function(self) self:getHeader(v):calculateChecksum() end
 		end
 	end
 
 
-	-- add functions to packet
-	ffi.metatype(packetName, packet)
+	-- add functions to stack
+	ffi.metatype(stackName, stack)
 
-	-- return 'get'/'cast' for this kind of packet
+	-- return 'get'/'cast' for this kind of stack
 	return function(self) return ctype(self:getData()) end
 end
 
-function packetCreate(...)
+function stackCreate(...)
 	log:warn('This function is deprecated and will be removed in the future.')
 	log:warn('Renamed to createStack(...)')
 	return createStack(...)
@@ -395,34 +395,34 @@ function getHeaderData(v)
 	end
 end
 
---- Get all headers of a packet as list.
---- @param self The packet
---- @return Table of members of the packet
-function packetGetHeaders(self) 
+--- Get all headers of a stack as list.
+--- @param self The stack
+--- @return Table of members of the stack
+function stackGetHeaders(self) 
 	local headers = {} 
 	for i, v in ipairs(self:getArgs()) do 
-		headers[i] = packetGetHeader(self, v) 
+		headers[i] = stackGetHeader(self, v) 
 	end 
 	return headers 
 end
 
---- Get the specified header of a packet (e.g. self.eth).
---- @param self the packet (cdata)
+--- Get the specified header of a stack (e.g. self.eth).
+--- @param self the stack (cdata)
 --- @param h header to be returned
---- @return The member of the packet
-function packetGetHeader(self, h)
+--- @return The member of the stack
+function stackGetHeader(self, h)
 	local member = getHeaderData(h)['name']
 	return self[member]
 end
 
---- Print a hex dump of a packet.
---- @param self the packet
+--- Print a hex dump of a stack.
+--- @param self the stack
 --- @param bytes Number of bytes to dump. If no size is specified the payload is truncated.
 --- @param stream the IO stream to write to, optional (default = io.stdout)
---- @param colorized Dump the packet colorized, every protocol in a different color (default = true)
-function packetDump(self, bytes, stream, colorized) 
+--- @param colorized Dump the stack colorized, every protocol in a different color (default = true)
+function stackDump(self, bytes, stream, colorized) 
 	if type(bytes) == "userdata" then
-		-- if someone calls this directly on a packet
+		-- if someone calls this directly on a stack
 		stream = bytes
 		bytes = nil
 	end
@@ -464,10 +464,10 @@ end
 --- fill{ ethSrc="12:23:34:45:56:67", ipTTL=100 } --- all members are set to default values with the exception of ethSrc and ipTTL
 --- fill{ pktLength=64 } --- only default values, length members of the headers are adjusted
 --- @endcode
---- @param self The packet
+--- @param self The stack
 --- @param args Table of named arguments. For a list of available arguments see "See also"
 --- @note This function is slow. If you want to modify members of a header during a time critical section of your script use the respective setters.
-function packetFill(self, namedArgs) 
+function stackFill(self, namedArgs) 
 	namedArgs = namedArgs or {}
 	local headers = self:getHeaders()
 	local args = self:getArgs()
@@ -485,10 +485,10 @@ function packetFill(self, namedArgs)
 end
 
 --- Retrieve the values of all members as list of named arguments.
---- @param self The packet
+--- @param self The stack
 --- @return Table of named arguments. For a list of arguments see "See also".
---- @see packetFill
-function packetGet(self) 
+--- @see stackFill
+function stackGet(self) 
 	local namedArgs = {} 
 	local args = self:getArgs()
 	for i, v in ipairs(self:getHeaders()) do 
@@ -498,10 +498,10 @@ function packetGet(self)
 	return namedArgs 
 end
 
---- Try to find out what the next header in the payload of this packet is.
+--- Try to find out what the next header in the payload of this stack is.
 --- This function is only used for buf:get/buf:dump
---- @param self The packet
-function packetResolveLastHeader(self)
+--- @param self The stack
+function stackResolveLastHeader(self)
 	local name = self:getName()
 	local headers = self:getHeaders()
 
@@ -530,7 +530,7 @@ function packetResolveLastHeader(self)
 			else
 				newArgs[#newArgs]["length"] = len
 			end
-			pkt.TMP_PACKET = createStack(unpack(newArgs))
+			pkt.TMP_STACK = createStack(unpack(newArgs))
 			-- build name with len adjusted
 			sub[#sub - 1] = len
 			local newName = table.concat(sub, "_")
@@ -542,7 +542,7 @@ function packetResolveLastHeader(self)
 	local nextHeader = headers[#headers]:resolveNextHeader()
 
 	-- unable to resolve: either there is no next header, or libmoon does not support it yet
-	-- either case, we stop and return current type of packet
+	-- either case, we stop and return current type of stack
 	if not nextHeader then
 		return self
 	else
@@ -559,11 +559,11 @@ function packetResolveLastHeader(self)
 		--nextMember = nextHeader
 		newName = name .. nextMember .. "_x_" .. (nextSubType or "x")
 
-		if not pkt.packetStructs[newName] then
+		if not pkt.stackStructs[newName] then
 			-- check if a similar struct with this header order exists
 			newName = name
 			local found = nil
-			for k, v in pairs(pkt.packetStructs) do
+			for k, v in pairs(pkt.stackStructs) do
 				if string.find(k, newName) and not string.find(string.gsub(k, newName, ""), "__") then
 					-- the type matches and there are no further headers following (which would have been indicated by another "__")
 					found = k
@@ -573,7 +573,7 @@ function packetResolveLastHeader(self)
 			if found then
 				newName = found
 			else
-				-- last resort: build new packet type. However, one has to consider that one header 
+				-- last resort: build new stack type. However, one has to consider that one header 
 				-- might occur multiple times! In this case the member must get a new (unique!) name.
 				local args = self:getArgs()
 				local newArgs = {}
@@ -595,27 +595,27 @@ function packetResolveLastHeader(self)
 				-- add new header and member
 				newArgs[#newArgs + 1] = { nextHeader, name = newMember, subType = nextSubType, length = nextLength }
 
-				-- create new packet. It is unlikely that exactly this packet type with this made up naming scheme will be used
+				-- create new stack. It is unlikely that exactly this stack type with this made up naming scheme will be used
 				-- Therefore, we don't really want to "safe" the cast function
-				pkt.TMP_PACKET = createStack(unpack(newArgs))
+				pkt.TMP_STACK = createStack(unpack(newArgs))
 				
-				-- name of the new packet type
+				-- name of the new stack type
 				newName = newName .. '_' .. newMember .. '_x_' .. (nextSubType or 'x')
 			end
 		end
 
-		-- finally, cast the packet to the next better fitting packet type and continue resolving
+		-- finally, cast the stack to the next better fitting stack type and continue resolving
 		return ffi.cast(newName .. "*", self):resolveLastHeader()
 	end
 end
 
 --- Set length for all headers.
 --- Necessary when sending variable sized packets.
---- @param self The packet
+--- @param self The stack
 --- @param length Length of the packet. Value for respective length member of headers get calculated using this value.
-function packetSetLength(args)
+function stackSetLength(args)
 	local str = ""
-	-- build the setLength functions for all the headers in this packet type
+	-- build the setLength functions for all the headers in this stack type
 	local accumulatedLength = 0
 	for _, v in ipairs(args) do
 		local data = getHeaderData(v)
@@ -649,10 +649,10 @@ end
 
 --- Calculate all checksums manually (not offloading them).
 --- There also exist functions to calculate the checksum of only one header.
---- Naming convention: pkt:calculate<member>Checksum() (for all existing packets member = {Ip, Tcp, Udp, Icmp})
+--- Naming convention: pkt:calculate<member>Checksum() (for all existing stacks member = {Ip, Tcp, Udp, Icmp})
 --- @note Calculating checksums manually is extremely slow compared to offloading this task to the NIC (~65% performance loss at the moment)
 --- @todo Manual calculation of udp and tcp checksums NYI
-function packetCalculateChecksums(args)
+function stackCalculateChecksums(args)
 	local str = ""
 	for _, v in ipairs(args) do
 		local data = getHeaderData(v)
@@ -726,26 +726,26 @@ local function defineHeaderStruct(p, subType, size)
 	return name	
 end
 
---- Table that contains the names and args of all created packet structs
-pkt.packetStructs = {}
+--- Table that contains the names and args of all created stack structs
+pkt.stackStructs = {}
 
--- List all created packet structs enlisted in packetStructs
+-- List all created stack structs enlisted in stackStructs
 -- Debugging function
-function listPacketStructs()
-	printf("All available packet structs:")
-	for k, v in pairs(pkt.packetStructs) do
+function liststackStructs()
+	printf("All available stack structs:")
+	for k, v in pairs(pkt.stackStructs) do
 		printf(k)
 	end
 end
 
---- Creates a packet struct (cdata) consisting of different headers.
---- Simply list the headers in the order you want them to be in a packet.
+--- Creates a stack struct (cdata) consisting of different headers.
+--- Simply list the headers in the order you want them to be in a stack.
 --- If you want the member to be named differently, use the following syntax:
 --- normal: <header> ; different membername: { <header>, <member> }.
 --- Supported keywords: eth, arp, ptp, ip, ip6, udp, tcp, icmp
 --- @code
---- makeStruct('eth', { 'ip4', 'ip' }, 'udp') --- creates an UDP packet struct
---- --- the ip4 member of the packet is named 'ip'
+--- makeStruct('eth', { 'ip4', 'ip' }, 'udp') --- creates an UDP stack struct
+--- --- the ip4 member of the stack is named 'ip'
 --- @endcode
 --- The name of the created (internal) struct looks as follows: 
 --- struct __HEADER1_MEMBER1__HEADER2_MEMBER2 ... 
@@ -756,7 +756,7 @@ end
 --- @param noPayload do not append payload VLA
 --- @return name name of the struct
 --- @return ctype ctype of the struct
-function packetMakeStruct(args, noPayload)
+function stackMakeStruct(args, noPayload)
 	local name = ""
 	local str = ""
 
@@ -787,7 +787,7 @@ function packetMakeStruct(args, noPayload)
 		name = name .. "__" .. header .. "_" .. member .. "_" .. (length or "x") .. "_" .. (subType or "x")
 	end
 
-	-- handle raw packet
+	-- handle raw stack
 	if name == "" then
 		name = "raw"
 	end
@@ -806,14 +806,14 @@ function packetMakeStruct(args, noPayload)
 
 	name = "struct " .. name
 
-	-- check uniqueness of packet type (name of struct)
-	if pkt.packetStructs[name] then
+	-- check uniqueness of stack type (name of struct)
+	if pkt.stackStructs[name] then
 		log:warn("Struct with name \"" .. name .. "\" already exists. Skipping.")
 		return
 	else
 		
 		-- add to list of existing structs
-		pkt.packetStructs[name] = {args}
+		pkt.stackStructs[name] = {args}
 
 		log:debug("Created struct %s", name)
 		log:debug("%s", str)
@@ -844,7 +844,7 @@ ffi.metatype("struct rte_mbuf", pkt)
 ---- Protocol Stacks
 ---------------------------------------------------------------------------
 
-pkt.getRawPacket = createStack()
+pkt.getRawstack = createStack()
 
 pkt.getEthernetPacket = createStack("eth")
 pkt.getEthPacket = pkt.getEthernetPacket
