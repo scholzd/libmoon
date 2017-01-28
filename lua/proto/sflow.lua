@@ -88,7 +88,7 @@ sflow.ip6.headerVariableMember = "payload"
 --- slfow ip4 header
 sflow.ip4 = {}
 
-sflow.ip4.name = 'sflow4'
+sflow.ip4.name = 'sflow'
 -- definition of the header format
 sflow.ip4.headerFormat = [[
 	uint32_t version;
