@@ -69,7 +69,7 @@ sflow.RECORD_TYPE_RAW_PACKET_BE = hton(0x01)
 --- sflow ip6 header
 sflow.ip6 = {}
 
-sflow.ip6.name = 'sflow6'
+sflow.ip6.name = 'sflow'
 -- definition of the header format
 sflow.ip6.headerFormat = [[
 	uint32_t version;
@@ -294,6 +294,16 @@ function sflowHeader:getString()
 		end
 	end
 	return str:sub(0, #str - 1)
+end
+
+function sflowHeader:getSubType()
+	if self.agent_ip_type == hton(1) then
+		return 'ip4'
+	--elseif TODO
+	--	return 'ip6'
+	else
+		return nil
+	end
 end
 
 function sflowUnknownEntry:getString()

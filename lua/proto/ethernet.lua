@@ -116,33 +116,32 @@ end
 ---- Ethernet header
 ----------------------------------------------------------------------------
 
-eth.default = {}
+eth.eth = {}
 -- name
-eth.default.name = 'eth'
-eth.default.nameAlias = 'ethernet'
+eth.eth.name = 'eth'
 -- definition of the header format
-eth.default.headerFormat = [[
+eth.eth.headerFormat = [[
 	union mac_address	dst;
 	union mac_address	src;
 	uint16_t		type;
 ]]
 
 -- Variable sized member
-eth.default.headerVariableMember = nil
+eth.eth.headerVariableMember = nil
 -- Based on which member can you resolve next header
-eth.default.resolveNextOn = 'type'
+eth.eth.resolveNextOn = 'type'
 -- Translation table
-eth.default.resolveNext = {}
-eth.default.resolveNext[eth.TYPE_IP] = 'ip4'
-eth.default.resolveNext[eth.TYPE_ARP] = 'arp'
-eth.default.resolveNext[eth.TYPE_IP6] = 'ip6'
-eth.default.resolveNext[eth.TYPE_PTP] = 'ptp'
-eth.default.resolveNext[eth.TYPE_8021Q] = 'vlan'
-eth.default.resolveNext[eth.TYPE_LACP] = 'lacp'
+eth.eth.resolveNext = {}
+eth.eth.resolveNext[eth.TYPE_IP] = 'ip4'
+eth.eth.resolveNext[eth.TYPE_ARP] = 'arp'
+eth.eth.resolveNext[eth.TYPE_IP6] = 'ip6'
+eth.eth.resolveNext[eth.TYPE_PTP] = 'ptp'
+eth.eth.resolveNext[eth.TYPE_8021Q] = 'vlan'
+eth.eth.resolveNext[eth.TYPE_LACP] = 'lacp'
 
 
 eth.vlan = {}
-eth.vlan.name = 'vlan'
+eth.vlan.name = eth.eth.name
 -- definition of the header format
 eth.vlan.headerFormat = [[
 	union mac_address	dst;
@@ -155,12 +154,12 @@ eth.vlan.headerFormat = [[
 --- Variable sized member
 eth.vlan.headerVariableMember = nil
 eth.vlan.resolveNextOn = 'type'
-eth.vlan.resolveNext = eth.default.resolveNext
+eth.vlan.resolveNext = eth.eth.resolveNext
 
-eth.defaultType = "default"
+eth.defaultType = 'eth'
 
 --- Module for ethernet_header struct
-local etherHeader = initHeader(eth.default)
+local etherHeader = initHeader(eth.eth)
 local etherVlanHeader = initHeader(eth.vlan)
 etherHeader.__index = etherHeader
 etherVlanHeader.__index = etherVlanHeader
@@ -372,7 +371,7 @@ end
 function etherHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- only set Type
 	if not namedArgs[pre .. "Type"] then
-		for type, name in pairs(eth.default.resolveNext) do
+		for type, name in pairs(eth.eth.resolveNext) do
 			if nextHeader == name then
 				namedArgs[pre .. "Type"] = type
 				break
@@ -389,14 +388,14 @@ etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
 function etherHeader:getSubType()
 	if self:getType() == eth.TYPE_8021Q then
-		return eth.vlan.name
+		return 'vlan'
 	else
-		return eth.default.name
+		return 'eth'
 	end
 end
 
 function etherVlanHeader:getSubType()
-	return eth.vlan.name
+	return 'vlan'
 end
 
 ----------------------------------------------------------------------------------
@@ -404,7 +403,7 @@ end
 ----------------------------------------------------------------------------------
 
 ffi.metatype("union mac_address", macAddr)
-eth.default.metatype = etherHeader
+eth.eth.metatype = etherHeader
 eth.vlan.metatype = etherVlanHeader
 
 return eth

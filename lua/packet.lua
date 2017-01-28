@@ -372,11 +372,6 @@ function getHeaderData(v)
 		local header = v[1]
 		local member = v['name']
 		local subType
-		-- special alias for ethernet
-		if v[1] == "eth" or v[1] == "ethernet" then 
-			header = "ethernet"
-			member = member or "eth"
-		end
 		member = member or header
 		if proto[header].defaultType then
 			subType = subType or proto[header].defaultType
@@ -384,10 +379,6 @@ function getHeaderData(v)
 		return { proto = header, name = member, length = v['length'], subType = v['subType'] or subType }
 	else
 		-- only the header name is given -> member has same name, no variable length
-		-- special alias for ethernet
-		if v == "ethernet" or v == "eth" then
-			return { proto = "ethernet", name = "eth", length = nil, subType = "default" }
-		end
 		-- set default subtype if available
 		local subType
 		if proto[v].defaultType then
@@ -687,31 +678,46 @@ function stackCalculateChecksums(args)
 end
 
 function stackMatchesStack(args)
-	local str = "	return "
+	local str = ""
 	local d = ''
 	nextHeader = nil
 	first = true
 	for i, v in ipairs(args) do
-		local v = getHeaderData(args[i])['name']
+		local proto = getHeaderData(args[i])
+		local name = proto['name']
+		local subType = proto['subType']
 		if not nextHeader then
-			nextHeader = [[self.]] .. v .. [[:resolveNextHeader()]]
+			nextHeader = [[self.]] .. name .. [[:resolveNextHeader()]]
+			if subType then
+				str = str .. [[
+(self.]] .. name .. [[:getSubType() == ']] .. subType .. [[') 
+]]
+				first = false
+			end
 		else
 			if not first then
 				str = str .. '		and '
 			end
 			first = false
-			d = d .. [[
-]]
 			str = str .. [[
-(self.]] .. v .. [[:getHeaderType() == ]] .. nextHeader .. [[)
+(self.]] .. name .. [[:getHeaderType() == ]] .. nextHeader .. [[) 
 ]]
-			nextHeader = [[self.]] .. v .. [[:resolveNextHeader()]]
+			if subType then
+				str = str .. [[
+and (self.]] .. name .. [[:getSubType() == ']] .. subType .. [[') 
+]]
+			end
+			nextHeader = [[self.]] .. name .. [[:resolveNextHeader()]]
 		end
 	end
+
+	if str == '' then
+		str = 'true'
+	end
+
 	str = [[
 return function(self) 
-]] .. d .. [[
-]] .. str .. [[
+	return ]] .. str .. [[ 
 end]]
 	print(str)
 	-- load new function and return it
