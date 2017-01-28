@@ -132,6 +132,7 @@ end
 -----------------------------------------------------------------------------------
 
 -- definition of the header format
+ip.name = 'ip4'
 ip.headerFormat = [[
 	uint8_t			verihl;
 	uint8_t			tos;
@@ -149,8 +150,17 @@ ip.headerFormat = [[
 --- Variable sized member
 ip.headerVariableMember = "options"
 
+ip.resolveNextOn = 'protocol'
+ip.resolveNext = {}
+ip.resolveNext[ip.PROTO_ICMP] = 'icmp'
+ip.resolveNext[ip.PROTO_TCP]  = 'tcp'
+ip.resolveNext[ip.PROTO_UDP]  = 'udp'
+ip.resolveNext[ip.PROTO_ESP]  = 'esp'
+ip.resolveNext[ip.PROTO_AH]   = 'ah'
+ip.resolveNext[ip.PROTO_SCTP] = 'sctp'
+
 --- Module for ip4_header struct
-local ip4Header = initHeader()
+local ip4Header = initHeader(ip)
 
 ip4Header.__index = ip4Header
 
@@ -531,30 +541,6 @@ function ip4Header:getString()
 		   .. " [" .. self:getOptionsString() .. "]"
 end
 
--- Maps headers to respective protocol value.
--- This list should be extended whenever a new protocol is added to 'IPv4 constants'. 
-local mapNameProto = {
-	icmp = ip.PROTO_ICMP,
-	udp = ip.PROTO_UDP,
-	tcp = ip.PROTO_TCP, 
-	esp = ip.PROTO_ESP,
-	ah = ip.PROTO_AH,
-}
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function ip4Header:resolveNextHeader()
-	local proto = self:getProtocol()
-	for name, _proto in pairs(mapNameProto) do
-		if proto == _proto then
-			return name
-		end
-	end
-	return nil
-end
 
 --- Change the default values for namedArguments (for fill/get).
 --- This can be used to for instance calculate a length value based on the total packet length.
@@ -574,7 +560,7 @@ function ip4Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	
 	-- set protocol
 	if not namedArgs[pre .. "Protocol"] then
-		for name, type in pairs(mapNameProto) do
+		for type, name in pairs(ip.resolveNext) do
 			if nextHeader == name then
 				namedArgs[pre .. "Protocol"] = type
 				break

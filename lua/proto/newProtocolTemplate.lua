@@ -31,18 +31,31 @@ local PROTO = {}
 
 
 ---------------------------------------------------------------------------
----- PROTO header
+---- PROTO information
 ---------------------------------------------------------------------------
 
+PROTO.name = 'PROTO'
 PROTO.headerFormat = [[
 	uint8_t		xyz;
 ]]
 
---- Variable sized member
+-- OPTIONAL Variable sized member
 PROTO.headerVariableMember = nil
 
+-- OPTIONAL Based on which member can you resolve next header
+PROTO.resolveNextOn = nil -- e.g. xyz
+
+-- OPTIONAL Translation table
+PROTO.resolveNext = nil -- {}
+--PROTO.resolveNext[eth.TYPE_IP] = 'ip4'
+
+
+---------------------------------------------------------------------------
+---- PROTO header
+---------------------------------------------------------------------------
+
 --- Module for PROTO_address struct
-local PROTOHeader = initHeader()
+local PROTOHeader = initHeader(PROTO)
 PROTOHeader.__index = PROTOHeader
 
 --[[ for all members of the header with non-standard data type: set, get, getString 
@@ -99,29 +112,6 @@ end
 --- @return Values in string format.
 function PROTOHeader:getString()
 	return "PROTO " .. self:getXYZString()
-end
-
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function PROTOHeader:resolveNextHeader()
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'PROTO'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see PROTOHeader:fill
-function PROTOHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
 end
 
 

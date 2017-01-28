@@ -63,6 +63,7 @@ ffi.cdef[[
 ---- lacp header
 ---------------------------------------------------------------------------
 
+lacp.name = 'lacp'
 -- definition of the header format
 lacp.headerFormat = [[
 	uint8_t subtype;          /* Always 1. */
@@ -88,7 +89,7 @@ lacp.headerFormat = [[
 lacp.headerVariableMember = nil
 
 --- Module for lacp_address struct
-local lacpHeader, lacpInfo = initHeader(), {}
+local lacpHeader, lacpInfo = initHeader(lacp), {}
 lacpHeader.__index = lacpHeader
 lacpInfo.__index = lacpInfo
 

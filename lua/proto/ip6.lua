@@ -171,6 +171,7 @@ end
 ---- IPv6 header
 ------------------------------------------------------------------------------
 
+ip6.name = 'ip6'
 -- definition of the header format
 ip6.headerFormat = [[
 	uint32_t 		vtf;
@@ -183,9 +184,16 @@ ip6.headerFormat = [[
 
 --- Variable sized member
 ip6.headerVariableMember = nil
+ip6.resolveNextOn = 'nextHeader'
+ip6.resolveNext = {}
+ip6.resolveNext[ip6.PROTO_TCP] 	= 'tcp'
+ip6.resolveNext[ip6.PROTO_UDP] 	= 'udp'
+ip6.resolveNext[ip6.PROTO_ICMP]	= 'icmp'
+ip6.resolveNext[ip6.PROTO_ESP]	= 'esp'
+ip6.resolveNext[ip6.PROTO_AH]	= 'ah'
 
 --- Module for ip6_header struct
-local ip6Header = initHeader()
+local ip6Header = initHeader(ip6)
 ip6Header.__index = ip6Header
 
 --- Set the version. 
@@ -448,30 +456,6 @@ function ip6Header:getString()
 		   .. " next " .. self:getNextHeaderString() .. " ttl " .. self:getTTLString()
 end
 
--- Maps headers to respective nextHeader value.
--- This list should be extended whenever a new protocol is added to 'IPv6 constants'. 
-local mapNameProto = {
-	icmp = ip6.PROTO_ICMP,
-	udp = ip6.PROTO_UDP,
-	tcp = ip6.PROTO_TCP, 
-	esp = ip6.PROTO_ESP,
-	ah = ip6.PROTO_AH,
-}
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function ip6Header:resolveNextHeader()
-	local proto = self:getNextHeader()
-	for name, _proto in pairs(mapNameProto) do
-		if proto == _proto then
-			return name
-		end
-	end
-	return nil
-end
 
 --- Change the default values for namedArguments (for fill/get).
 --- This can be used to for instance calculate a length value based on the total packet length.
@@ -491,7 +475,7 @@ function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	
 	-- set protocol
 	if not namedArgs[pre .. "NextHeader"] then
-		for name, type in pairs(mapNameProto) do
+		for type, name in pairs(ip6.resolveNext) do
 			if nextHeader == name then
 				namedArgs[pre .. "NextHeader"] = type
 				break

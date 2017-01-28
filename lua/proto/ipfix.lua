@@ -110,6 +110,7 @@ ffi.cdef[[
 ---- https://tools.ietf.org/html/rfc7011#section-3.1
 ---------------------------------------------------------------------------
 
+ipfix.name = 'ipfix'
 -- definition of the header format
 ipfix.headerFormat = [[
 	uint16_t	version;
@@ -123,7 +124,7 @@ ipfix.headerFormat = [[
 ipfix.headerVariableMember = nil
 
 --- Module for ipfix struct
-local ipfixHeader = initHeader()
+local ipfixHeader = initHeader(ipfix)
 ipfixHeader.__index = ipfixHeader
 
 --- Set the version.

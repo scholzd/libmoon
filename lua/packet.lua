@@ -288,6 +288,7 @@ local stackGet
 local stackResolveLastHeader
 local stackCalculateChecksums
 local stackMakeStruct
+local stackMatchesStack
 
 --- Create struct and functions for a new stack.
 --- For implemented headers (see proto/) these packets are defined in the section 'Packet struct' of each protocol file
@@ -326,6 +327,8 @@ function createStack(...)
 	stack.get = stackGet
 
 	stack.resolveLastHeader = stackResolveLastHeader
+
+	stack.matchesStack = stackMatchesStack(args)
 
 	-- runtime critical function, load specific code during runtime
 	stack.setLength = stackSetLength(args)
@@ -683,6 +686,41 @@ function stackCalculateChecksums(args)
 	return func
 end
 
+function stackMatchesStack(args)
+	local str = "	return "
+	local d = ''
+	nextHeader = nil
+	first = true
+	for i, v in ipairs(args) do
+		local v = getHeaderData(args[i])['name']
+		if not nextHeader then
+			nextHeader = [[self.]] .. v .. [[:resolveNextHeader()]]
+		else
+			if not first then
+				str = str .. '		and '
+			end
+			first = false
+			d = d .. [[
+]]
+			str = str .. [[
+(self.]] .. v .. [[:getHeaderType() == ]] .. nextHeader .. [[)
+]]
+			nextHeader = [[self.]] .. v .. [[:resolveNextHeader()]]
+		end
+	end
+	str = [[
+return function(self) 
+]] .. d .. [[
+]] .. str .. [[
+end]]
+	print(str)
+	-- load new function and return it
+	local func = assert(loadstring(str))()
+
+	return func
+end
+
+
 local createdHeaderStructs = {}
 
 local headerStructTemplate = [[
@@ -844,7 +882,7 @@ ffi.metatype("struct rte_mbuf", pkt)
 ---- Protocol Stacks
 ---------------------------------------------------------------------------
 
-pkt.getRawstack = createStack()
+pkt.getRawPacket = createStack()
 
 pkt.getEthernetPacket = createStack("eth")
 pkt.getEthPacket = pkt.getEthernetPacket

@@ -51,6 +51,7 @@ ptp.CONTROL_DELAY_RESP = 3
 ---- PTP header
 ---------------------------------------------------------------------------
 
+ptp.name = 'ptp'
 -- definition of the header format
 ptp.headerFormat = [[
 	uint8_t 	messageType;
@@ -73,7 +74,7 @@ ptp.headerFormat = [[
 ptp.headerVariableMember = nil
 
 --- Module for ptp_header struct
-local ptpHeader = initHeader()
+local ptpHeader = initHeader(ptp)
 ptpHeader.__index = ptpHeader
 
 --- Set the message type.

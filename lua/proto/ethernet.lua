@@ -117,6 +117,9 @@ end
 ----------------------------------------------------------------------------
 
 eth.default = {}
+-- name
+eth.default.name = 'eth'
+eth.default.nameAlias = 'ethernet'
 -- definition of the header format
 eth.default.headerFormat = [[
 	union mac_address	dst;
@@ -124,10 +127,22 @@ eth.default.headerFormat = [[
 	uint16_t		type;
 ]]
 
---- Variable sized member
+-- Variable sized member
 eth.default.headerVariableMember = nil
+-- Based on which member can you resolve next header
+eth.default.resolveNextOn = 'type'
+-- Translation table
+eth.default.resolveNext = {}
+eth.default.resolveNext[eth.TYPE_IP] = 'ip4'
+eth.default.resolveNext[eth.TYPE_ARP] = 'arp'
+eth.default.resolveNext[eth.TYPE_IP6] = 'ip6'
+eth.default.resolveNext[eth.TYPE_PTP] = 'ptp'
+eth.default.resolveNext[eth.TYPE_8021Q] = 'vlan'
+eth.default.resolveNext[eth.TYPE_LACP] = 'lacp'
+
 
 eth.vlan = {}
+eth.vlan.name = 'vlan'
 -- definition of the header format
 eth.vlan.headerFormat = [[
 	union mac_address	dst;
@@ -139,12 +154,14 @@ eth.vlan.headerFormat = [[
 
 --- Variable sized member
 eth.vlan.headerVariableMember = nil
+eth.vlan.resolveNextOn = 'type'
+eth.vlan.resolveNext = eth.default.resolveNext
 
 eth.defaultType = "default"
 
 --- Module for ethernet_header struct
-local etherHeader = initHeader()
-local etherVlanHeader = initHeader()
+local etherHeader = initHeader(eth.default)
+local etherVlanHeader = initHeader(eth.vlan)
 etherHeader.__index = etherHeader
 etherVlanHeader.__index = etherVlanHeader
 
@@ -341,32 +358,6 @@ function etherVlanHeader:getString()
 	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " vlan " .. self:getVlanTag() .. " type " .. self:getTypeString()
 end
 
--- Maps headers to respective types.
--- This list should be extended whenever a new type is added to 'Ethernet constants'. 
-local mapNameType = {
-	ip4 = eth.TYPE_IP,
-	ip6 = eth.TYPE_IP6,
-	arp = eth.TYPE_ARP,
-	ptp = eth.TYPE_PTP, 
-	lacp = eth.TYPE_LACP,
-}
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function etherHeader:resolveNextHeader()
-	local type = self:getType()
-	for name, _type in pairs(mapNameType) do
-		if type == _type then
-			return name
-		end
-	end
-	return nil
-end
-
-etherVlanHeader.resolveNextHeader = etherHeader.resolveNextHeader
 
 --- Change the default values for namedArguments (for fill/get).
 --- This can be used to for instance calculate a length value based on the total packet length.
@@ -381,7 +372,7 @@ etherVlanHeader.resolveNextHeader = etherHeader.resolveNextHeader
 function etherHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
 	-- only set Type
 	if not namedArgs[pre .. "Type"] then
-		for name, type in pairs(mapNameType) do
+		for type, name in pairs(eth.default.resolveNext) do
 			if nextHeader == name then
 				namedArgs[pre .. "Type"] = type
 				break
@@ -398,14 +389,14 @@ etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
 function etherHeader:getSubType()
 	if self:getType() == eth.TYPE_8021Q then
-		return "vlan"
+		return eth.vlan.name
 	else
-		return "default"
+		return eth.default.name
 	end
 end
 
 function etherVlanHeader:getSubType()
-	return "vlan"
+	return eth.vlan.name
 end
 
 ----------------------------------------------------------------------------------

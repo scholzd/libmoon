@@ -56,6 +56,7 @@ arp.OP_REPLY = 2
 ---- ARP header
 --------------------------------------------------------------------------------------------------------
 
+arp.name = 'arp'
 -- definition of the header format
 arp.headerFormat = [[
 	uint16_t	hrd;
@@ -73,7 +74,7 @@ arp.headerFormat = [[
 arp.headerVariableMember = nil
 
 --- Module for arp_header struct
-local arpHeader = initHeader()
+local arpHeader = initHeader(arp)
 arpHeader.__index = arpHeader
 
 --- Set the hardware address type.

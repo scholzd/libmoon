@@ -34,6 +34,7 @@ local mod = {}
 ---- TCP header
 ------------------------------------------------------------------------------
 
+mod.name = 'tcp'
 -- definition of the header format
 mod.headerFormat = [[
 	uint16_t	src;
@@ -52,7 +53,7 @@ mod.headerFormat = [[
 mod.headerVariableMember = "options"
 
 --- Module for tcp_header struct
-local tcpHeader = initHeader()
+local tcpHeader = initHeader(mod)
 tcpHeader.__index = tcpHeader
 
 --- Set the source port.

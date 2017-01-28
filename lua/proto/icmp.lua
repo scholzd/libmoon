@@ -71,6 +71,7 @@ icmp6.ECHO_REPLY				= { type = 129, code = 0 }
 ---- ICMP header
 ---------------------------------------------------------------------------
 
+icmp.name = 'icmp'
 -- definition of the header format
 icmp.headerFormat = [[
 	uint8_t		type;
@@ -83,7 +84,7 @@ icmp.headerFormat = [[
 icmp.headerVariableMember = "body"
 
 --- Module for icmp_header struct
-local icmpHeader = initHeader()
+local icmpHeader = initHeader(icmp)
 icmpHeader.__index = icmpHeader
 
 --- Set the type.

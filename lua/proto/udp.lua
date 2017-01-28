@@ -41,7 +41,8 @@ udp.PORT_SFLOW = 6343
 ---------------------------------------------------------------------------
 ---- UDP header
 ---------------------------------------------------------------------------
-	
+
+udp.name = 'udp'
 -- definition of the header format
 udp.headerFormat = [[
 	uint16_t	src;
@@ -53,8 +54,17 @@ udp.headerFormat = [[
 --- Variable sized member
 udp.headerVariableMember = nil
 
+udp.resolveNextOn = 'dst'
+udp.resolveNext = {}
+udp.resolveNext[udp.PORT_DNS] = 'dns'
+udp.resolveNext[udp.PORT_PTP_EVENTS] = 'ptp'
+udp.resolveNext[udp.PORT_PTP_GENERAL_MESSAGES] = 'ptp'
+udp.resolveNext[udp.PORT_IPFIX] = 'ipfix'
+udp.resolveNext[udp.PORT_VXLAN] = 'vxlan'
+udp.resolveNext[udp.PORT_SFLOW] = 'sflow'
+
 --- Module for udp_header struct
-local udpHeader = initHeader()
+local udpHeader = initHeader(udp)
 udpHeader.__index = udpHeader
 
 --- Set the source port.
@@ -180,36 +190,6 @@ function udpHeader:getString()
 		   .. " cksum " .. self:getChecksumString()
 end
 
--- Maps headers to respective (well knwon) port.
--- This list should be extended whenever a new protocol is added to 'UDP constants'. 
-local mapNamePort = {
-	ptp = { udp.PORT_PTP_EVENTS, udp.PORT_PTP_GENERAL_MESSAGES },
-	vxlan = udp.PORT_VXLAN,
-	sflow = udp.PORT_SFLOW,
-	dns = udp.PORT_DNS,
-	ipfix = udp.PORT_IPFIX,
-}
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function udpHeader:resolveNextHeader()
-	local port = self:getDstPort()
-	for name, _port in pairs(mapNamePort) do
-		if type(_port) == "table" then
-			for _, p in pairs(_port) do
-				if port == p then
-					return name
-				end
-			end
-		elseif port == _port then
-			return name
-		end
-	end
-	return nil
-end	
 
 --- Change the default values for namedArguments (for fill/get).
 --- This can be used to for instance calculate a length value based on the total packet length.
@@ -229,9 +209,9 @@ function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 
 	-- set dst port
 	if not namedArgs[pre .. "Dst"] then
-		for name, _port in pairs(mapNamePort) do
+		for _port, name in pairs(udp.resolveNext) do
 			if nextHeader == name then
-				namedArgs[pre .. "Dst"] = type(_port) == "table" and _port[1] or _port
+				namedArgs[pre .. "Dst"] = _port
 				break
 			end
 		end

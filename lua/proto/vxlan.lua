@@ -26,6 +26,7 @@ local vxlan = {}
 ---- vxlan header
 ---------------------------------------------------------------------------
 
+vxlan.name = 'vxlan'
 -- definition of the header format
 vxlan.headerFormat = [[
 	uint8_t		flags;
@@ -38,7 +39,7 @@ vxlan.headerFormat = [[
 vxlan.headerVariableMember = nil
 
 --- Module for vxlan_header struct
-local vxlanHeader = initHeader()
+local vxlanHeader = initHeader(vxlan)
 vxlanHeader.__index = vxlanHeader
 
 --- Set the flags.

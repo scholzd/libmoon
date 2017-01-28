@@ -80,6 +80,7 @@ end
 ---- ah header
 ---------------------------------------------------------------------------
 
+ah.name = 'ah'
 -- definition of the header format
 ah.headerFormat = [[
 	uint8_t		nextHeader;
@@ -94,7 +95,9 @@ ah.headerFormat = [[
 --- Variable sized member
 ah.headerVariableMember = nil
 
-local ahHeader = initHeader()
+--ah.resolveNextOn = nextHeader TODO
+
+local ahHeader = initHeader(ah)
 ahHeader.__index = ahHeader
 
 --- Set the SPI.
@@ -255,16 +258,6 @@ end
 function ahHeader:getString()
 	return "AH spi " .. self:getSPIString() .. " sqn " .. self:getSQNString() .. " iv " .. self:getIVString() .. " icv " .. self:getICVString() .. " next_hdr " .. self:getNextHeader() .. " len " .. self:getLength()
 end
-
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function ahHeader:resolveNextHeader()
-	return nil
-	--TODO: return self:getNextHeader()
-end	
 
 
 ------------------------------------------------------------------------

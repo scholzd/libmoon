@@ -72,6 +72,7 @@ end
 ---- esp header
 ---------------------------------------------------------------------------
 
+esp.name = 'esp'
 -- definition of the header format
 esp.headerFormat = [[
 	uint32_t	spi;
@@ -82,7 +83,7 @@ esp.headerFormat = [[
 --- Variable sized member
 esp.headerVariableMember = nil
 
-local espHeader = initHeader()
+local espHeader = initHeader(esp)
 espHeader.__index = espHeader
 
 --- Set the SPI.

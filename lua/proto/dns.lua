@@ -146,6 +146,7 @@ ARCOUNT         an unsigned 16 bit integer specifying the number of
                 resource records in the additional records section.
 ]]--
 
+dns.name = 'dns'
 -- definition of the header format
 dns.headerFormat = [[
 	uint16_t	id;
@@ -160,7 +161,7 @@ dns.headerFormat = [[
 --- Variable sized member
 dns.headerVariableMember = body
 
-local dnsHeader = initHeader()
+local dnsHeader = initHeader(dns)
 dnsHeader.__index = dnsHeader
 
 --- Set the query id.

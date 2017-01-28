@@ -69,6 +69,7 @@ sflow.RECORD_TYPE_RAW_PACKET_BE = hton(0x01)
 --- sflow ip6 header
 sflow.ip6 = {}
 
+sflow.ip6.name = 'sflow6'
 -- definition of the header format
 sflow.ip6.headerFormat = [[
 	uint32_t version;
@@ -87,6 +88,7 @@ sflow.ip6.headerVariableMember = "payload"
 --- slfow ip4 header
 sflow.ip4 = {}
 
+sflow.ip4.name = 'sflow4'
 -- definition of the header format
 sflow.ip4.headerFormat = [[
 	uint32_t version;
@@ -104,7 +106,7 @@ sflow.ip4.headerVariableMember = "payload"
 
 sflow.defaultType = "ip4"
 
-local sflowHeader = initHeader()
+local sflowHeader = initHeader(sflow.ip4)
 sflowHeader.__index = sflowHeader
 
 local sflowUnknownEntry = {}
