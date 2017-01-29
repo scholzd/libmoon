@@ -289,6 +289,7 @@ local stackResolveLastHeader
 local stackCalculateChecksums
 local stackMakeStruct
 local stackMatchesStack
+local stackAdjustStack
 
 --- Create struct and functions for a new stack.
 --- For implemented headers (see proto/) these packets are defined in the section 'Packet struct' of each protocol file
@@ -296,7 +297,7 @@ local stackMatchesStack
 --- @return returns the constructor/cast function for this stack
 --- @see stackMakeStruct
 function createStack(...)
-	local args = { ... }
+	local args = {...}
 	
 	local stack = {}
 	stack.__index = stack
@@ -310,11 +311,17 @@ function createStack(...)
 		log:warn("Failed to create new stack type.")
 		return
 	end
+	if not ctype then
+		log:warn("Stack already exists, only returning cast")
+		return function(self) return stackName(self:getData()) end
+	end
 
 	-- functions of the stack
 	stack.getArgs = function() return args end
 	
 	stack.getName = function() return stackName end
+	
+	stack.getStructs = function() return pkt.stackStructs end
 
 	stack.getHeaders = stackGetHeaders
 
@@ -329,6 +336,8 @@ function createStack(...)
 	stack.resolveLastHeader = stackResolveLastHeader
 
 	stack.matchesStack = stackMatchesStack(args)
+
+	stack.adjustStack = stackAdjustStack(args, stackName)
 
 	-- runtime critical function, load specific code during runtime
 	stack.setLength = stackSetLength(args)
@@ -679,9 +688,8 @@ end
 
 function stackMatchesStack(args)
 	local str = ""
-	local d = ''
-	nextHeader = nil
-	first = true
+	local nextHeader = nil
+	local first = true
 	for i, v in ipairs(args) do
 		local proto = getHeaderData(args[i])
 		local name = proto['name']
@@ -719,7 +727,75 @@ and (self.]] .. name .. [[:getSubType() == ']] .. subType .. [[')
 return function(self) 
 	return ]] .. str .. [[ 
 end]]
-	print(str)
+	
+	-- load new function and return it
+	local func = assert(loadstring(str))()
+
+	return func
+end
+
+function stackAdjustStack(args, stackName)
+	local str = ""
+	local lengthMems = ''
+	local argss = ''
+	local first = true
+	for i, v in ipairs(args) do
+		if type(v) ~= 'table' then
+			v = { v }
+		end
+		if proto[getHeaderData(v)['proto']].headerVariableMember then
+			v['length'] = 'length' .. i .. ' or 0'
+		end
+		if not first then
+			argss = argss .. ','
+		end
+		first = false
+		argss = argss .. '{'
+		local f = true
+		for k, val in pairs(v) do
+			if not f then
+				argss = argss .. ','
+			end
+			f = false
+			print(k .. type(k))
+			if type(k) ~= 'number' then
+				argss = argss .. k .. '="' .. val .. '"'
+			else
+				argss = argss .. '"' .. val .. '"'
+			end
+		end
+		argss = argss .. '}'
+	end
+	print(lengthMems)
+	for i, v in ipairs(args) do
+		local p = getHeaderData(args[i])
+		local prot = p['proto']
+		local name = p['name']
+		local subType = p['subType']
+		if proto[prot].headerVariableMember then
+			stackName = string.gsub(stackName, name .. '_[x%d]-_', name .. '_%%d_')
+			lengthMems = lengthMems .. ', length' .. i
+			str = str .. [[
+	local length]] .. i .. [[ = self.]] .. name .. [[:getVariableLength() 
+	local newStack = string.format(']] .. stackName .. [[']] .. lengthMems .. [[)
+	if not structs[newStack] then
+		print('in here')
+		createStack(]] .. argss .. [[)
+	end
+	self = ffi.cast(newStack .. '*', self)
+
+]]
+		end
+	end
+
+	str = [[
+return function(self) 
+	local ffi = require 'ffi'
+	local structs = self:getStructs()
+
+]] .. str .. [[	return self
+end]]
+	print(str)	
 	-- load new function and return it
 	local func = assert(loadstring(str))()
 
@@ -775,7 +851,7 @@ pkt.stackStructs = {}
 
 -- List all created stack structs enlisted in stackStructs
 -- Debugging function
-function liststackStructs()
+function listStackStructs()
 	printf("All available stack structs:")
 	for k, v in pairs(pkt.stackStructs) do
 		printf(k)
@@ -853,7 +929,7 @@ function stackMakeStruct(args, noPayload)
 	-- check uniqueness of stack type (name of struct)
 	if pkt.stackStructs[name] then
 		log:warn("Struct with name \"" .. name .. "\" already exists. Skipping.")
-		return
+		return ffi.typeof(name .. "*")
 	else
 		
 		-- add to list of existing structs
