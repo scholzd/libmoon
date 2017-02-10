@@ -316,12 +316,17 @@ function createStack(...)
 		return function(self) return stackName(self:getData()) end
 	end
 
+	-- cache of structs with varying length members for this stack
+	local cache = {}
+
 	-- functions of the stack
 	stack.getArgs = function() return args end
 	
 	stack.getName = function() return stackName end
 	
-	stack.getStructs = function() return pkt.stackStructs end
+	stack.getCache = function() return cache end
+
+	stack.addToCache = function(index, obj) cache[index] = obj end
 
 	stack.getHeaders = stackGetHeaders
 
@@ -735,6 +740,7 @@ end]]
 end
 
 function stackAdjustStack(args, stackName)
+	print('writing functuin')
 	local str = ""
 	local lengthMems = ''
 	local argss = ''
@@ -758,7 +764,9 @@ function stackAdjustStack(args, stackName)
 			end
 			f = false
 			print(k .. type(k))
-			if type(k) ~= 'number' then
+			if k == 'length' then
+				argss = argss .. k .. '=' .. val 
+			elseif type(k) ~= 'number' then
 				argss = argss .. k .. '="' .. val .. '"'
 			else
 				argss = argss .. '"' .. val .. '"'
@@ -766,6 +774,7 @@ function stackAdjustStack(args, stackName)
 		end
 		argss = argss .. '}'
 	end
+	print(argss)
 	print(lengthMems)
 	for i, v in ipairs(args) do
 		local p = getHeaderData(args[i])
@@ -777,21 +786,28 @@ function stackAdjustStack(args, stackName)
 			lengthMems = lengthMems .. ', length' .. i
 			str = str .. [[
 	local length]] .. i .. [[ = self.]] .. name .. [[:getVariableLength() 
-	local newStack = string.format(']] .. stackName .. [[']] .. lengthMems .. [[)
-	if not structs[newStack] then
+	print(length]] .. i .. [[)
+	-- calculate index
+	--TODO
+	local newStack = cache[index]
+	if not newStack then
+		-- need to generate this particular stack once
 		print('in here')
-		createStack(]] .. argss .. [[)
+		newStack = createStack(]] .. argss .. [[)
+		origSelf:addToCache(newStack)
 	end
-	self = ffi.cast(newStack .. '*', self)
-
+	self = newStack(buf)
+	self:dump()
 ]]
 		end
 	end
 
 	str = [[
-return function(self) 
+return function(origSelf, buf) 
+	print('running function')
 	local ffi = require 'ffi'
-	local structs = self:getStructs()
+	local cache = origSelf:getCache()
+	local self = origSelf
 
 ]] .. str .. [[	return self
 end]]
