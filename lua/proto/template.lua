@@ -20,7 +20,7 @@ function initHeader(proto)
 	if not proto then
 		print('FATAL: no proto object')
 	end
-	print('Setting up ' .. proto.name)
+	--print('Setting up ' .. proto.name)
 	local mod = {}
 	mod.__index = mod
 	

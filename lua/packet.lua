@@ -326,7 +326,14 @@ function createStack(...)
 	
 	stack.getCache = function() return cache end
 
-	stack.addToCache = function(index, obj) cache[index] = obj end
+	stack.addToCache = function(self, index, obj) cache[index] = obj end
+
+	stack.dumpCache = function()
+		print('--------------dumping cache-----------------')
+		for k, v in pairs(cache) do
+			print(tostring(k) .. ' ==== ' .. tostring(v))
+		end
+	end
 
 	stack.getHeaders = stackGetHeaders
 
@@ -740,17 +747,23 @@ end]]
 end
 
 function stackAdjustStack(args, stackName)
-	print('writing functuin')
 	local str = ""
 	local lengthMems = ''
 	local argss = ''
 	local first = true
+	local lengthParams = {}
+
+	-- serialize the args
 	for i, v in ipairs(args) do
+		-- if its only the header name, wrap it
 		if type(v) ~= 'table' then
 			v = { v }
 		end
+		-- special treatment for var length headers
 		if proto[getHeaderData(v)['proto']].headerVariableMember then
-			v['length'] = 'length' .. i .. ' or 0'
+			local name = 'length' .. i
+			lengthParams[name] = v['length'] or 0
+			v['length'] = name
 		end
 		if not first then
 			argss = argss .. ','
@@ -758,14 +771,14 @@ function stackAdjustStack(args, stackName)
 		first = false
 		argss = argss .. '{'
 		local f = true
+		-- serialize this header data
 		for k, val in pairs(v) do
 			if not f then
 				argss = argss .. ','
 			end
 			f = false
-			print(k .. type(k))
 			if k == 'length' then
-				argss = argss .. k .. '=' .. val 
+				argss = argss .. k .. '=' .. val
 			elseif type(k) ~= 'number' then
 				argss = argss .. k .. '="' .. val .. '"'
 			else
@@ -774,44 +787,63 @@ function stackAdjustStack(args, stackName)
 		end
 		argss = argss .. '}'
 	end
-	print(argss)
-	print(lengthMems)
+
+	-- init length values string
+	local initLength = ''
+	local index = ''
+	local first = true
+	local i = 0
+	for length, val in pairs(lengthParams) do
+		initLength = initLength .. [[	local ]] .. length .. [[ = ]] .. val .. [[ 
+]]
+		if not first then
+			index = index .. ' + '
+		end
+		index = index .. length
+		if not first then
+			index = index .. ' * ' .. tostring(256 * i)
+		end
+		first = false
+		i = i + 1
+	end
+
+
 	for i, v in ipairs(args) do
 		local p = getHeaderData(args[i])
 		local prot = p['proto']
 		local name = p['name']
 		local subType = p['subType']
 		if proto[prot].headerVariableMember then
-			stackName = string.gsub(stackName, name .. '_[x%d]-_', name .. '_%%d_')
 			lengthMems = lengthMems .. ', length' .. i
 			str = str .. [[
 	local length]] .. i .. [[ = self.]] .. name .. [[:getVariableLength() 
-	print(length]] .. i .. [[)
 	-- calculate index
-	--TODO
+	local index = ]] .. index .. [[ 
 	local newStack = cache[index]
 	if not newStack then
 		-- need to generate this particular stack once
-		print('in here')
 		newStack = createStack(]] .. argss .. [[)
-		origSelf:addToCache(newStack)
+		origSelf:addToCache(index, newStack)
 	end
 	self = newStack(buf)
-	self:dump()
+	--self:dump()
 ]]
 		end
 	end
 
 	str = [[
 return function(origSelf, buf) 
-	print('running function')
-	local ffi = require 'ffi'
+	-- get the cache for this stack
 	local cache = origSelf:getCache()
+	-- we want to always keep the cache of the original stack
 	local self = origSelf
+
+	-- all length members in this stack initialized 
+]] .. initLength .. [[ 
 
 ]] .. str .. [[	return self
 end]]
-	print(str)	
+	--print(str)	
 	-- load new function and return it
 	local func = assert(loadstring(str))()
 
