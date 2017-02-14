@@ -397,7 +397,7 @@ function getHeaderData(v)
 		if proto[header].defaultType then
 			subType = subType or proto[header].defaultType
 		end
-		return { proto = header, name = member, length = v['length'], subType = v['subType'] or subType }
+		return { proto = header, name = member, length = v['length'], subType = v['subType'] or subType, forceLength = v['forceLength'] }
 	else
 		-- only the header name is given -> member has same name, no variable length
 		-- set default subtype if available
@@ -406,7 +406,7 @@ function getHeaderData(v)
 			subType = subType or proto[v].defaultType
 		end
 		-- otherwise header name = member name
-		return { proto = v, name = v, length = nil, subType = subType }
+		return { proto = v, name = v, length = nil, subType = subType, forceLength = nil }
 	end
 end
 
@@ -762,7 +762,7 @@ function stackAdjustStack(args, stackName)
 		-- special treatment for var length headers
 		if proto[getHeaderData(v)['proto']].headerVariableMember then
 			local name = 'length' .. i
-			lengthParams[name] = v['length'] or 0
+			lengthParams[name] = v['forceLength'] or v['length'] or 0
 			v['length'] = name
 		end
 		if not first then
@@ -777,7 +777,7 @@ function stackAdjustStack(args, stackName)
 				argss = argss .. ','
 			end
 			f = false
-			if k == 'length' then
+			if k == 'length' or k == 'forceLength' then
 				argss = argss .. k .. '=' .. val
 			elseif type(k) ~= 'number' then
 				argss = argss .. k .. '="' .. val .. '"'
@@ -794,7 +794,8 @@ function stackAdjustStack(args, stackName)
 	local first = true
 	local i = 0
 	for length, val in pairs(lengthParams) do
-		initLength = initLength .. [[	local ]] .. length .. [[ = ]] .. val .. [[ 
+		initLength = initLength .. [[	local ]] .. length .. [[Start = ]] .. val .. [[ 
+	local ]] .. length .. [[ = ]] .. val .. [[ 
 ]]
 		if not first then
 			index = index .. ' + '
@@ -813,20 +814,23 @@ function stackAdjustStack(args, stackName)
 		local prot = p['proto']
 		local name = p['name']
 		local subType = p['subType']
-		if proto[prot].headerVariableMember then
+		local forceLength = p['forceLength']
+		if proto[prot].headerVariableMember and not forceLength then
 			lengthMems = lengthMems .. ', length' .. i
-			str = str .. [[
+			str = str .. [[ 
 	local length]] .. i .. [[ = self.]] .. name .. [[:getVariableLength() 
-	-- calculate index
-	local index = ]] .. index .. [[ 
-	local newStack = cache[index]
-	if not newStack then
-		-- need to generate this particular stack once
-		newStack = createStack(]] .. argss .. [[)
-		origSelf:addToCache(index, newStack)
-	end
-	self = newStack(buf)
-	--self:dump()
+	if length]] .. i .. [[ ~= length]] .. i .. [[Start then 
+		-- calculate index
+		local index = ]] .. index .. [[ 
+		local newStack = cache[index]
+		if not newStack then
+			-- need to generate this particular stack once
+			newStack = createStack(]] .. argss .. [[)
+			origSelf:addToCache(index, newStack)
+		end
+		self = newStack(buf)
+		--self:dump()
+	end 
 ]]
 		end
 	end
@@ -843,7 +847,7 @@ return function(origSelf, buf)
 
 ]] .. str .. [[	return self
 end]]
-	--print(str)	
+	print(str)	
 	-- load new function and return it
 	local func = assert(loadstring(str))()
 
@@ -935,7 +939,7 @@ function stackMakeStruct(args, noPayload)
 		local data = getHeaderData(v)
 		header = data['proto']
 		member = data['name']
-		length = data['length']
+		length = data['forceLength'] or data['length']
 		subType = data['subType']
 
 		-- check for duplicate member names as ffi does not crash (it is mostly ignored)
