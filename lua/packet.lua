@@ -847,7 +847,7 @@ return function(origSelf, buf)
 
 ]] .. str .. [[	return self
 end]]
-	print(str)	
+	--print(str)	
 	-- load new function and return it
 	local func = assert(loadstring(str))()
 

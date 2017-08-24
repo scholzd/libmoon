@@ -4,7 +4,9 @@ local device = require "device"
 local stats  = require "stats"
 local log    = require "log"
 local memory = require "memory"
-local arp    = require "proto.arp"
+local packet = require 'packet'
+require "utils"
+local time = time
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -27,7 +29,6 @@ function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
 	parser:option("-r --rate", "Transmit rate in Mbit/s per device."):args(1)
-	parser:flag("-a --arp", "Use ARP.")
 	return parser:parse()
 end
 
@@ -45,28 +46,10 @@ function master(args,...)
 			rxQueues = args.arp and 2 or 1
 		}
 		args.dev[i] = dev
-		if args.arp then
-			table.insert(arpQueues, { rxQueue = dev:getRxQueue(1), txQueue = dev:getTxQueue(args.threads), ips = ARP_IP })
-		end
 	end
 	device.waitForLinks()
 
-	-- start ARP task and do ARP lookup (if not hardcoded above)
-	if args.arp then
-		arp.startArpTask(arpQueues)
-		if not DST_MAC then
-			log:info("Performing ARP lookup on %s, timeout 3 seconds.", GW_IP)
-			DST_MAC = arp.blockingLookup(GW_IP, 3)
-			if not DST_MAC then
-				log:info("ARP lookup failed, using default destination mac address")
-				DST_MAC = "01:23:45:67:89:ab"
-			end
-		end
-		log:info("Destination mac: %s", DST_MAC)
-	end
-
 	-- print statistics
-	stats.startStatsTask{devices = args.dev}
 
 	-- configure tx rates and start transmit slaves
 	for i, dev in ipairs(args.dev) do
@@ -78,18 +61,29 @@ function master(args,...)
 			lm.startTask("txSlave", queue, DST_MAC)
 		end
 	end
+	local start = time()
+	local cur = time()
+	while cur - start < 5 do
+		cur = time()
+	end
+	lm.stop()
 	lm.waitForTasks()
 end
 
 function txSlave(queue, dstMac)
+	local test = createStack('eth', {'ip4', length=12}, {'tcp', length=20}, 'vxlan')--createStack({'ip4', length=12}, {'ip4', name='inner', length=20})
+	local test2 =createStack('eth', 'ip4', 'tcp', 'vxlan') --createStack({'ip4'}, {'ip4', name='inner'})
+	local test3 = createStack('eth', 'ip4', {'tcp', forceLength = 1}, 'vxlan')
 	-- memory pool with default values for all packets, this is our archetype
 	local mempool = memory.createMemPool(function(buf)
-		buf:getUdpPacket():fill{
+		test(buf):fill{
 			-- fields not explicitly set here are initialized to reasonable defaults
 			ethSrc = queue, -- MAC of the tx device
 			ethDst = dstMac,
 			ip4Src = SRC_IP,
 			ip4Dst = DST_IP,
+			--ip4HeaderLength = ,
+			--innerHeaderLength = 5,
 			udpSrc = SRC_PORT,
 			udpDst = DST_PORT,
 			pktLength = PKT_LEN
@@ -97,20 +91,28 @@ function txSlave(queue, dstMac)
 	end)
 	-- a bufArray is just a list of buffers from a mempool that is processed as a single batch
 	local bufs = mempool:bufArray()
+	local ctr = stats:newManualTxCounter(queue.dev, 'plain')
+	local rx
+	local num
+	local sum = 0
+	local phase = 0
 	while lm.running() do -- check if Ctrl+c was pressed
-		-- this actually allocates some buffers from the mempool the array is associated with
-		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
 		bufs:alloc(PKT_LEN)
+		num = 0
 		for i, buf in ipairs(bufs) do
-			-- packet framework allows simple access to fields in complex protocol stacks
-			local pkt = buf:getUdpPacket()
-			pkt.udp:setSrcPort(SRC_PORT_BASE + math.random(0, NUM_FLOWS - 1))
+			local pkt = test(buf)
+			--pkt:dump()
+			pkt = pkt:adjustStack(buf)
+			sum = sum + pkt.tcp:getSrc()
+			
+			--pkt:dump()
+			--lm.stop()
+			num = i
+			--return
 		end
-		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
-		-- UDP checksum offloading is comparatively slow: NICs typically do not support calculating the pseudo-header checksum so this is done in SW
-		bufs:offloadUdpChecksums()
-		-- send out all packets and frees old bufs that have been sent
-		queue:send(bufs)
+		ctr:update(num, num * PKT_LEN)
 	end
+	print(sum)
+	ctr:finalize()
 end
 
