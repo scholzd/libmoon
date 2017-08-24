@@ -39,7 +39,7 @@ local packetRing = mod.packetRing
 packetRing.__index = packetRing
 
 function mod:newPacketRing(size, socket)
-	size = size or 8192
+	size = size or 512
 	socket = socket or -1
 	return setmetatable({
 		ring = C.create_ring(size, socket)
@@ -55,18 +55,18 @@ end
 local ENOBUFS = S.c.E.NOBUFS
 
 -- FIXME: this is work-around for some bug with the serialization of nested objects
-function mod:sendToPacketRing(ring, bufs)
-	return C.ring_enqueue(ring, bufs.array, bufs.size) ~= -ENOBUFS
+function mod:sendToPacketRing(ring, bufs, n)
+	return C.ring_enqueue(ring, bufs.array, n or bufs.size) > 0
 end
 
 -- try to enqueue packets in a ring, returns true on success
 function packetRing:send(bufs)
-	return C.ring_enqueue(self.ring, bufs.array, bufs.size) ~= -ENOBUFS
+	return C.ring_enqueue(self.ring, bufs.array, bufs.size) > 0
 end
 
 -- try to enqueue packets in a ring, returns true on success
 function packetRing:sendN(bufs, n)
-	return C.ring_enqueue(self.ring, bufs.array, n) ~= -ENOBUFS
+	return C.ring_enqueue(self.ring, bufs.array, n) > 0
 end
 
 function packetRing:recv(bufs)
@@ -93,6 +93,14 @@ function mod:newSlowPipe()
 	return setmetatable({
 		pipe = C.pipe_mpmc_new(512)
 	}, slowPipe)
+end
+
+-- This is work-around for some bug with the serialization of nested objects
+function mod:sendToSlowPipe(slowPipe, ...)
+	local vals = serpent.dump({...})
+	local buf = memory.alloc("char*", #vals + 1)
+	ffi.copy(buf, vals)
+	C.pipe_mpmc_enqueue(slowPipe.pipe, buf)
 end
 
 function slowPipe:send(...)
@@ -131,6 +139,13 @@ end
 
 function slowPipe:count()
 	return tonumber(C.pipe_mpmc_count(self.pipe))
+end
+
+-- Dequeue and discard all objects from pipe
+function slowPipe:empty()
+	while self:count() > 0 do
+		self:recv()
+	end
 end
 
 function slowPipe:__serialize()

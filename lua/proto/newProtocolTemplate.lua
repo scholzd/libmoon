@@ -45,7 +45,7 @@ PROTO.headerVariableMember = nil
 local PROTOHeader = initHeader()
 PROTOHeader.__index = PROTOHeader
 
---[[ for all members of the header: set, get, getString 
+--[[ for all members of the header with non-standard data type: set, get, getString 
 -- for set also specify a suitable default value
 --]]
 --- Set the XYZ.
