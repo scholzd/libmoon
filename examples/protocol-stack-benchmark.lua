@@ -7,31 +7,30 @@ local ffi 	= require "ffi"
 
 function configure(parser)
 	parser:description("Generates TCP SYN flood from varying source IPs, supports both IPv4 and IPv6")
-	parser:argument("genDev", "Device to gen/rec traffic from."):convert(tonumber)
-	parser:argument("benchDev", "Device to benchmark on."):convert(tonumber)
+	parser:argument("mode", "Run loadgen or benchmark.")
 	parser:argument("benchmark", "Benchmark to use"):default(0):convert(tonumber)
+	parser:argument("tx", "Device to send traffic to."):convert(tonumber)
+	parser:argument("rx", "Device to receive traffic from."):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
 	parser:option("-b --bytes", "Bytes to increment"):default(100):convert(tonumber)
 	parser:option("-l --length", "Packet length"):default(500):convert(tonumber)
 end
 
 function master(args)
-	local genDev = device.config{port = args.genDev, rxQueues = 1, txQueues = 1}
-        local benchDev = device.config{port = args.benchDev, rxQueues = 1, txQueues = 1}
+	local txDev = device.config{port = args.tx, txQueues = 1}
+        local rxDev = device.config{port = args.rx, rxQueues = 1}
         device.waitForLinks()
-		
-	genDev:getTxQueue(0):setRate(args.rate)
+	
+	txDev:getTxQueue(0):setRate(args.rate)
 
         -- print statistics
-        stats.startStatsTask{devices = {genDev, benchDev}}
+        stats.startStatsTask{devices = {txDev, rxDev}}
 
-        mg.startTask('dumpTask', genDev:getRxQueue(0))
-        mg.startTask('loadTask', genDev:getTxQueue(0), args.length)
-
-	if args.benchmark == 0 then
-        	mg.startTask('accessSequentialBytesBench', benchDev:getRxQueue(0), benchDev:getTxQueue(0), args.bytes, args.length)
-        elseif args.benchmark == 1 then
-		mg.startTask('copySequentialBytesBench', benchDev:getRxQueue(0), benchDev:getTxQueue(0), args.bytes, args.length)
+	if mode == 'loadgen' then
+        	mg.startTask('dumpTask', rxDev:getRxQueue(0))
+        	mg.startTask('loadTask', txDev:getTxQueue(0), args.length)
+	else if mode == 'benchmark' then
+        	mg.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
 	end
 
         mg.waitForTasks()
