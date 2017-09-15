@@ -1,4 +1,4 @@
-local mg	= require "moongen"
+local lm	= require "libmoon"
 local memory	= require "memory"
 local device	= require "device"
 local stats	= require "stats"
@@ -8,7 +8,7 @@ local ffi 	= require "ffi"
 function configure(parser)
 	parser:description("Generates TCP SYN flood from varying source IPs, supports both IPv4 and IPv6")
 	parser:argument("mode", "Run loadgen or benchmark.")
-	parser:argument("benchmark", "Benchmark to use"):default(0):convert(tonumber)
+	parser:argument("benchmark", "Benchmark to use")
 	parser:argument("tx", "Device to send traffic to."):convert(tonumber)
 	parser:argument("rx", "Device to receive traffic from."):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
@@ -27,13 +27,13 @@ function master(args)
         stats.startStatsTask{devices = {txDev, rxDev}}
 
 	if mode == 'loadgen' then
-        	mg.startTask('dumpTask', rxDev:getRxQueue(0))
-        	mg.startTask('loadTask', txDev:getTxQueue(0), args.length)
-	else if mode == 'benchmark' then
-        	mg.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
+        	lm.startTask('dumpTask', rxDev:getRxQueue(0))
+        	lm.startTask('loadTask', txDev:getTxQueue(0), args.length)
+	elseif mode == 'benchmark' then
+        	lm.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
 	end
 
-        mg.waitForTasks()
+        lm.waitForTasks()
 end
 
 function loadTask(queue, length)
@@ -48,7 +48,7 @@ function loadTask(queue, length)
 	end)
 
 	local bufs = mem:bufArray()
-	while mg.running() do
+	while lm.running() do
 		bufs:alloc(length)
 		queue:send(bufs)
 	end
@@ -56,7 +56,7 @@ end
 local ctr  = 0
 function dumpTask(queue)
 	local bufs = memory.bufArray()
-	while mg.running() do
+	while lm.running() do
 		local rx = queue:tryRecv(bufs, 100)
 		if rx > 0 and ctr < 100 then
 			bufs[1]:dump()
@@ -70,7 +70,7 @@ end
 function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
 	local rxBufs = memory.bufArray()
 	
-	while mg.running() do
+	while lm.running() do
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			for i = 1, rx do 			
@@ -95,7 +95,7 @@ function copySequentialBytesBench(rxQueue, txQueue, bytes, length)
 	end)
 	local txBufs = mem:bufArray()
 
-	while mg.running() do
+	while lm.running() do
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			txBufs:allocN(length, rx)
@@ -113,7 +113,7 @@ end
 function insertMemberBench(rxQueue, txQueue, bytes, length)
 	local rxBufs = memory.bufArray()
 
-	while mg.running() do
+	while lm.running() do
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			for i = 1, rx do
