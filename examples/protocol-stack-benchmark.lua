@@ -32,13 +32,14 @@ function master(args)
 	elseif args.mode == 'benchmark' then
         	lm.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
 	else
-		log.fatal('Unknown mode ' .. args.mode)
+		log:fatal('Unknown mode ' .. args.mode)
 	end
 
         lm.waitForTasks()
 end
 
 function loadTask(queue, length)
+	log:info('Starting load task')
 	local mem = memory.createMemPool(function(buf)
 		local pkt = buf:getRawPacket()
 		for i = 0, length - 1 do
@@ -57,19 +58,21 @@ function loadTask(queue, length)
 end
 local ctr  = 0
 function dumpTask(queue)
+	log:info('Starting dump task')
 	local bufs = memory.bufArray()
 	while lm.running() do
 		local rx = queue:tryRecv(bufs, 100)
-		if rx > 0 and ctr < 100 then
-			bufs[1]:dump()
-			ctr = ctr + 1
-		end
+		--if rx > 0 and ctr < 100 then
+		--	bufs[1]:dump()
+		--	ctr = ctr + 1
+		--end
 		bufs:free(rx)
 	end
 end
 
 
 function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
+	log:info('Starting access sequential bytes benchmark')
 	local rxBufs = memory.bufArray()
 	
 	while lm.running() do
@@ -87,6 +90,7 @@ function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
 end
 
 function copySequentialBytesBench(rxQueue, txQueue, bytes, length)
+	log:info('Starting copy sequential bytes benchmark')
 	local rxBufs = memory.bufArray()
 
 	local mem = memory.createMemPool(function(buf)
@@ -113,6 +117,7 @@ function copySequentialBytesBench(rxQueue, txQueue, bytes, length)
 end
 
 function insertMemberBench(rxQueue, txQueue, bytes, length)
+	log:info('Starting insert member benchmark')
 	local rxBufs = memory.bufArray()
 
 	while lm.running() do
