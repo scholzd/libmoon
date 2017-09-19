@@ -26,11 +26,13 @@ function master(args)
         -- print statistics
         stats.startStatsTask{devices = {txDev, rxDev}}
 
-	if mode == 'loadgen' then
+	if args.mode == 'loadgen' then
         	lm.startTask('dumpTask', rxDev:getRxQueue(0))
         	lm.startTask('loadTask', txDev:getTxQueue(0), args.length)
-	elseif mode == 'benchmark' then
+	elseif args.mode == 'benchmark' then
         	lm.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
+	else
+		log.fatal('Unknown mode ' .. args.mode)
 	end
 
         lm.waitForTasks()
