@@ -14,6 +14,7 @@ function configure(parser)
 	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
 	parser:option("-b --bytes", "Bytes to increment"):default(100):convert(tonumber)
 	parser:option("-l --length", "Packet length"):default(500):convert(tonumber)
+	parser:option("-f --file", "Output file"):default('log.csv')
 end
 
 function master(args)
@@ -24,11 +25,11 @@ function master(args)
 	txDev:getTxQueue(0):setRate(args.rate)
 
         -- print statistics
-        stats.startStatsTask{devices = {txDev, rxDev}}
+        stats.startStatsTask{devices = {txDev, rxDev}, format='csv', file=args.file}
 
 	if args.mode == 'loadgen' then
         	lm.startTask('dumpTask', rxDev:getRxQueue(0))
-        	lm.startTask('loadTask', txDev:getTxQueue(0), args.length)
+		lm.startTask('loadTask', txDev:getTxQueue(1), args.length)
 	elseif args.mode == 'benchmark' then
         	lm.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
 	else
