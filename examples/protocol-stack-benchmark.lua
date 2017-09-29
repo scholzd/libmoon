@@ -12,7 +12,7 @@ function configure(parser)
 	parser:argument("tx", "Device to send traffic to."):convert(tonumber)
 	parser:argument("rx", "Device to receive traffic from."):convert(tonumber)
 	parser:option("-r --rate", "Transmit rate in Mbit/s."):default(10000):convert(tonumber)
-	parser:option("-b --bytes", "Bytes to increment"):default(100):convert(tonumber)
+	parser:option("-b --bytes", "Depending on test: Bytes to increment or byte accessed"):default(100):convert(tonumber)
 	parser:option("-l --length", "Packet length"):default(500):convert(tonumber)
 	parser:option("-f --file", "Output file"):default('log.csv')
 end
@@ -84,6 +84,22 @@ function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
 				for x = 0, bytes - 1 do
 					rxPkt.payload.uint8[x] = rxPkt.payload.uint8[x] + 1
 				end
+			end
+			txQueue:sendN(rxBufs, rx)
+		end
+	end
+end
+
+function accessSingleByteBench(rxQueue, txQueue, byte, length)
+	log:info('Starting access single byte benchmark')
+	local rxBufs = memory.bufArray()
+
+	while lm.running() do
+		local rx = rxQueue:recv(rxBufs)
+		if rx > 0 then
+			for i = 1, rx do
+				local rxPkt = rxBufs[i]:getRawPacket()
+				rxPkt.payload.uint8[byte] = rxPkt.payload.uint8[byte] + 1
 			end
 			txQueue:sendN(rxBufs, rx)
 		end
