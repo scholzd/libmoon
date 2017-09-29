@@ -29,6 +29,7 @@ SET(FILES
 	src/timestamping_i40e
 	src/timestamping_ixgbe
 	src/timestamping_igb
+	src/timing
 )
 
 SET(DPDK_LIBS

@@ -5,6 +5,12 @@ local stats	= require "stats"
 local log 	= require "log"
 local ffi 	= require "ffi"
 
+local C = ffi.C
+
+ffi.cdef[[
+	void wait_cycles(uint32_t wait);
+]]
+
 function configure(parser)
 	parser:description("Generates TCP SYN flood from varying source IPs, supports both IPv4 and IPv6")
 	parser:argument("mode", "Run loadgen or benchmark.")
@@ -116,6 +122,7 @@ function accessSingleByteBench(rxQueue, txQueue, byte, length)
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			for i = 1, rx do
+				C.wait_cycles(1000)
 				local rxPkt = rxBufs[i]:getRawPacket()
 				rxPkt.payload.uint8[byte] = rxPkt.payload.uint8[byte] + 1
 			end
