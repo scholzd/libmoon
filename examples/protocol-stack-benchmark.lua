@@ -90,6 +90,24 @@ function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
 	end
 end
 
+function accessSequentialBytesBackwardsBench(rxQueue, txQueue, bytes, length)
+	log:info('Starting access sequential bytes backwards benchmark')
+	local rxBufs = memory.bufArray()
+
+	while lm.running() do
+		local rx = rxQueue:recv(rxBufs)
+		if rx > 0 then
+			for i = 1, rx do
+			local rxPkt = rxBufs[i]:getRawPacket()
+				for x = bytes - 1, 0, -1 do
+					rxPkt.payload.uint8[x] = rxPkt.payload.uint8[x] + 1
+				end
+			end
+			txQueue:sendN(rxBufs, rx)
+		end
+	end
+end
+
 function accessSingleByteBench(rxQueue, txQueue, byte, length)
 	log:info('Starting access single byte benchmark')
 	local rxBufs = memory.bufArray()
