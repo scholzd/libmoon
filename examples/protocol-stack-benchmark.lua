@@ -21,6 +21,7 @@ function configure(parser)
 	parser:option("-b --bytes", "Depending on test: Bytes to increment or byte accessed"):default(100):convert(tonumber)
 	parser:option("-l --length", "Packet length"):default(500):convert(tonumber)
 	parser:option("-f --file", "Output file"):default('log.csv')
+	parser:option("-c --cycles", "Wait cycles per packet"):default(0):convert(tonumber)
 end
 
 function master(args)
@@ -37,7 +38,7 @@ function master(args)
         	lm.startTask('dumpTask', rxDev:getRxQueue(0))
 		lm.startTask('loadTask', txDev:getTxQueue(0), args.length)
 	elseif args.mode == 'benchmark' then
-        	lm.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length)
+        	lm.startTask(args.benchmark .. 'Bench', rxDev:getRxQueue(0), txDev:getTxQueue(0), args.bytes, args.length, args.cycles)
 	else
 		log:fatal('Unknown mode ' .. args.mode)
 	end
@@ -78,7 +79,7 @@ function dumpTask(queue)
 end
 
 
-function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
+function accessSequentialBytesBench(rxQueue, txQueue, bytes, length, cycles)
 	log:info('Starting access sequential bytes benchmark')
 	local rxBufs = memory.bufArray()
 	
@@ -86,6 +87,7 @@ function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			for i = 1, rx do 			
+				C.wait_cycles(cycles)
 				local rxPkt = rxBufs[i]:getRawPacket()
 				for x = 0, bytes - 1 do
 					rxPkt.payload.uint8[x] = rxPkt.payload.uint8[x] + 1
@@ -96,7 +98,7 @@ function accessSequentialBytesBench(rxQueue, txQueue, bytes, length)
 	end
 end
 
-function accessSequentialBytesBackwardsBench(rxQueue, txQueue, bytes, length)
+function accessSequentialBytesBackwardsBench(rxQueue, txQueue, bytes, length, cycles)
 	log:info('Starting access sequential bytes backwards benchmark')
 	local rxBufs = memory.bufArray()
 
@@ -104,7 +106,8 @@ function accessSequentialBytesBackwardsBench(rxQueue, txQueue, bytes, length)
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			for i = 1, rx do
-			local rxPkt = rxBufs[i]:getRawPacket()
+				C.wait_cycles(cycles)
+				local rxPkt = rxBufs[i]:getRawPacket()
 				for x = bytes - 1, 0, -1 do
 					rxPkt.payload.uint8[x] = rxPkt.payload.uint8[x] + 1
 				end
@@ -114,7 +117,7 @@ function accessSequentialBytesBackwardsBench(rxQueue, txQueue, bytes, length)
 	end
 end
 
-function accessSingleByteBench(rxQueue, txQueue, byte, length)
+function accessSingleByteBench(rxQueue, txQueue, byte, length, cycles)
 	log:info('Starting access single byte benchmark')
 	local rxBufs = memory.bufArray()
 
@@ -122,7 +125,7 @@ function accessSingleByteBench(rxQueue, txQueue, byte, length)
 		local rx = rxQueue:recv(rxBufs)
 		if rx > 0 then
 			for i = 1, rx do
-				C.wait_cycles(1000)
+				C.wait_cycles(cycles)
 				local rxPkt = rxBufs[i]:getRawPacket()
 				rxPkt.payload.uint8[byte] = rxPkt.payload.uint8[byte] + 1
 			end
@@ -131,7 +134,7 @@ function accessSingleByteBench(rxQueue, txQueue, byte, length)
 	end
 end
 
-function copySequentialBytesBench(rxQueue, txQueue, bytes, length)
+function copySequentialBytesBench(rxQueue, txQueue, bytes, length, cycles)
 	log:info('Starting copy sequential bytes benchmark')
 	local rxBufs = memory.bufArray()
 
@@ -148,6 +151,7 @@ function copySequentialBytesBench(rxQueue, txQueue, bytes, length)
 		if rx > 0 then
 			txBufs:allocN(length, rx)
 			for i = 1, rx do
+				C.wait_cycles(cycles)
 				local txPkt = txBufs[i]:getRawPacket()
 				local rxPkt = rxBufs[i]:getRawPacket()
 				ffi.copy(txPkt.payload, rxPkt.payload, bytes)
@@ -158,7 +162,7 @@ function copySequentialBytesBench(rxQueue, txQueue, bytes, length)
 	end
 end
 
-function insertMemberBench(rxQueue, txQueue, bytes, length)
+function insertMemberBench(rxQueue, txQueue, bytes, length, cycles)
 	log:info('Starting insert member benchmark')
 	local rxBufs = memory.bufArray()
 
