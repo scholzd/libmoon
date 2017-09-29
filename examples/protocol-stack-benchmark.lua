@@ -153,6 +153,26 @@ function accessMultipleBytesBench(rxQueue, txQueue, byte, length, cycles)
 	end
 end
 
+function accessMultipleBytesReversedBench(rxQueue, txQueue, byte, length, cycles)
+	log:info('Starting access single byte benchmark')
+	local rxBufs = memory.bufArray()
+
+	length = length - 1
+	while lm.running() do
+		local rx = rxQueue:recv(rxBufs)
+		if rx > 0 then
+			for i = 1, rx do
+				C.wait_cycles(cycles)
+				local rxPkt = rxBufs[i]:getRawPacket()
+				for x = 0, byte - 1 do
+					rxPkt.payload.uint8[length - (x * 64)] = rxPkt.payload.uint8[length - (x * 64)] + 1
+				end
+			end
+			txQueue:sendN(rxBufs, rx)
+		end
+	end
+end
+
 function copySequentialBytesBench(rxQueue, txQueue, bytes, length, cycles)
 	log:info('Starting copy sequential bytes benchmark')
 	local rxBufs = memory.bufArray()
