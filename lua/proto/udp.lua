@@ -36,6 +36,7 @@ udp.PORT_PTP_GENERAL_MESSAGES = 320
 udp.PORT_IPFIX = 4739
 udp.PORT_VXLAN = 4789
 udp.PORT_SFLOW = 6343
+udp.PORT_INT = 1234
 
 
 ---------------------------------------------------------------------------
@@ -188,6 +189,7 @@ local mapNamePort = {
 	sflow = udp.PORT_SFLOW,
 	dns = udp.PORT_DNS,
 	ipfix = udp.PORT_IPFIX,
+	inbt = udp.PORT_INT,
 }
 
 --- Resolve which header comes after this one (in a packet).

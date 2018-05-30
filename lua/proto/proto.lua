@@ -22,5 +22,6 @@ proto.ipfix = require "proto.ipfix"
 proto.sflow = require "proto.sflow"
 proto.lacp = require "proto.lacp"
 proto.gre = require "proto.gre"
+proto.inbt = require "proto.int"
 
 return proto

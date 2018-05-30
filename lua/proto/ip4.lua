@@ -37,6 +37,7 @@ ip.PROTO_GRE  = 0x2f
 ip.PROTO_ESP  = 0x32
 ip.PROTO_AH   = 0x33
 ip.PROTO_SCTP = 0x84
+ip.PROTO_INBT = 0xff
 
 --- Special addresses
 --- Null address
@@ -543,6 +544,7 @@ local mapNameProto = {
 	esp = ip.PROTO_ESP,
 	ah = ip.PROTO_AH,
 	gre = ip.PROTO_GRE,
+	inbt = ip.PROTO_INBT,
 }
 
 --- Resolve which header comes after this one (in a packet).

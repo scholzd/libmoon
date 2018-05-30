@@ -993,4 +993,6 @@ pkt.getGreQinQUdpPacket = function(self, ip4)
 	end
 end
 
+pkt.getInbtPacket = createStack("eth", "ip4", "inbt")
+
 return pkt
