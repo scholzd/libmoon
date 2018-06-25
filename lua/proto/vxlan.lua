@@ -59,7 +59,7 @@ vxlan.gpe.headerFormat = [[
 --- Variable sized member
 vxlan.gpe.headerVariableMember = nil
 
-eth.defaultType = "default"
+vxlan.defaultType = "default"
 
 --- Module for vxlan_header struct
 local vxlanHeader = initHeader()
@@ -105,7 +105,7 @@ end
 
 --- Set the first reserved field.
 --- @param int VXLAN header first reserved field as 16 bit integer.
-function vxlaniGpeHeader:setReserved(int)
+function vxlanGpeHeader:setReserved(int)
 	int = int or 0
 	
 	-- X 2 1 ->  1 2
