@@ -381,6 +381,9 @@ function getHeaderData(v)
 			member = member or "eth"
 		end
 		member = member or header
+		if proto[header] == nil then
+			log:fatal("Protocol " .. header .. " does not exist.")
+		end
 		if proto[header].defaultType then
 			subType = subType or proto[header].defaultType
 		end
@@ -393,6 +396,9 @@ function getHeaderData(v)
 		end
 		-- set default subtype if available
 		local subType
+		if proto[v] == nil then
+			log:fatal("Protocol " .. v .. " does not exist.")
+		end
 		if proto[v].defaultType then
 			subType = subType or proto[v].defaultType
 		end
@@ -919,8 +925,8 @@ pkt.getUdpPtpPacket = createStack("eth", "ip4", "udp", "ptp")
 pkt.getVxlanPacket = createStack("eth", "ip4", "udp", "vxlan")
 pkt.getVxlanEthernetPacket = createStack("eth", "ip4", "udp", "vxlan", { "eth", name = "innerEth" })
 
-pkt.getVxlanIntPacket = createStack("eth", "ip4", "udp", { "vxlan", subType = "gpe" }, "int")
-pkt.getVxlanIntEthernetPacket = createStack("eth", "ip4", "udp", { "vxlan", subType = "gpe" } , "int", { "eth", name = "innerEth" })
+pkt.getVxlanIntPacket = createStack("eth", "ip4", "udp", { "vxlan", subType = "gpe" }, "inbt")
+pkt.getVxlanIntEthernetPacket = createStack("eth", "ip4", "udp", { "vxlan", subType = "gpe" } , "inbt", { "eth", name = "innerEth" })
 
 
 pkt.getEsp4Packet = createStack("eth", "ip4", "esp")
