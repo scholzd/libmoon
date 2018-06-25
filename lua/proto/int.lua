@@ -25,7 +25,7 @@ local mod = {}
 
 
 ---------------------------------------------------------------------------
----- int header
+---- int header + int shim header over vxlan
 ---------------------------------------------------------------------------
 --- ---First 8b Ver_rep
 --- 4b Version
@@ -37,6 +37,10 @@ local mod = {}
 --- 10b Reserved
 --- 5b Hop ML - Per Hop Metadata Length
 mod.headerFormat = [[
+	uint8_t		type;
+	uint8_t		reserved0;
+	uint8_t		length;
+	uint8_t		nextProtocol;
 	uint8_t		ver_rep;
 	uint8_t 	byte2;
 	uint8_t 	byte3;
@@ -303,6 +307,10 @@ function intHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "inbt"
 
+	self:setType(args[pre .. "Type"] or 0)
+	self:setReserved0(args[pre .. "Reserved0"] or 0)
+	self:setLength(args[pre .. "Length"] or 3)
+	self:setNextProtocol(args[pre .. "NextProtocol"] or 1)
 	self:setVersion(args[pre .. "Version"])
 	self:setReplication(args[pre .. "Replication"])
 	self:setCopy(args[pre .. "Copy"])
@@ -323,6 +331,10 @@ function intHeader:get(pre)
 	pre = pre or "inbt"
 
 	local args = {}
+	args[pre .. "Type"] = self:getType()
+	args[pre .. "Reserved0"] = self:getReserved0()
+	args[pre .. "Length"] = self:getLength()
+	args[pre .. "NextProtocol"] = self:getNextProtocol()
 	args[pre .. "Version"] = self:getVersion()
 	args[pre .. "Replication"] = self:getReplication()
 	args[pre .. "Copy"] = self:getCopy()
@@ -341,7 +353,11 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function intHeader:getString()
-	return "int ver " .. self:getVersionString()
+	return "INT SHIM type " .. self:getTypeString()
+		.. "r0 " .. self:getReserved0()
+		.. "len " .. self:getLength()
+		.. "next " .. self:getNextProtocol()
+		.. "\nINT ver " .. self:getVersionString()
 		.. " rep " .. self:getReplicationString()
 		.. " C " .. self:getCopyString()
 		.. " MHCE " .. self:getMaxHopCountExceededString()
@@ -358,7 +374,7 @@ end
 --- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
 --- @return String next header (e.g. 'eth', 'ip4', nil)
 function intHeader:resolveNextHeader()
-	return 'eth'
+	return self:getNextProtocol()
 end	
 
 --- Change the default values for namedArguments (for fill/get)
@@ -372,11 +388,13 @@ end
 --- @return Table of namedArgs
 --- @see intHeader:fill
 function intHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+	-- TODO nextHeader
 	return namedArgs
 end
 
 function intHeader:getVariableLength()
-	return 0
+	-- in 4 byte words, 3 for shim and int header
+	return (self:getLength() - 3) * 4
 end
 
 ------------------------------------------------------------------------
