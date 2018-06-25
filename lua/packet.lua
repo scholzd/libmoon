@@ -919,6 +919,10 @@ pkt.getUdpPtpPacket = createStack("eth", "ip4", "udp", "ptp")
 pkt.getVxlanPacket = createStack("eth", "ip4", "udp", "vxlan")
 pkt.getVxlanEthernetPacket = createStack("eth", "ip4", "udp", "vxlan", { "eth", name = "innerEth" })
 
+pkt.getVxlanIntPacket = createStack("eth", "ip4", "udp", "vxlanint")
+pkt.getVxlanIntEthernetPacket = createStack("eth", "ip4", "udp", "vxlanint", { "eth", name = "innerEth" })
+
+
 pkt.getEsp4Packet = createStack("eth", "ip4", "esp")
 pkt.getEsp6Packet = createStack("eth", "ip6", "esp") 
 pkt.getEspPacket = function(self, ip4) 

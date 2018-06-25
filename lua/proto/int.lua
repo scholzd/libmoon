@@ -27,15 +27,23 @@ local mod = {}
 ---------------------------------------------------------------------------
 ---- int header
 ---------------------------------------------------------------------------
-
+--- ---First 8b Ver_rep
+--- 4b Version
+--- 2b Replication
+--- 1b Copy
+--- 1b Max Hop Count exceeded
+--- ---Second/third 8b
+--- 1b MTU exceeded
+--- 10b Reserved
+--- 5b Hop ML - Per Hop Metadata Length
 mod.headerFormat = [[
 	uint8_t		ver_rep;
-	uint8_t		ins_cnt;
-	uint8_t		MaxHopCount;
-	uint8_t		TotalHopCount;
-	uint16_t	InstructionBitmap;
-	uint16_t	reserved;
-	uint8_t	metadata[];
+	uint8_t 	byte2;
+	uint8_t 	byte3;
+	uint8_t 	remainingHopCount;
+	uint16_t	instructionBitmap;
+	uint16_t	reserved2;
+	uint32_t	metadata[];
 ]]
 
 --- Variable sized member
@@ -48,36 +56,40 @@ intHeader.__index = intHeader
 -- version | replication | copy | exceeded | reserved | inst cnt
 -- XXYYCERR RRRZZZZZ
 
+
+----------------------------------------------------------
+--- First 8 Bit Field ver_rep
+----------------------------------------------------------
 --- Set the version.
---- @param int version of the int header as 2 bit integer.
+--- @param int version of the int header as 4 bit integer.
 function intHeader:setVersion(int)
-	int = int or 0
-	int = band(lshift(int, 6), 0xc0) -- fill to 8 bits
+	int = int or 1
+	int = band(lshift(int, 4), 0xf0) -- fill to 8 bits
 	
 	old = self.ver_rep
-	old = band(old, 0x3f) -- remove old value
+	old = band(old, 0xf) -- remove old value
 	
 	self.ver_rep = bor(old, int)
 end
 
 --- Retrieve the version.
---- @return version as 2 bit integer.
+--- @return version as 4 bit integer.
 function intHeader:getVersion()
-	return band(rshift(self.ver_rep, 6), 0x03)
+	return band(rshift(self.offset, 4), 0x0f)
 end
 
 function intHeader:getVersionString()
-	return self:getVersion()
+	return format("0x%01x", self:getVersion())
 end
 
 --- Set the replication.
 --- @param int replication of the int header as 2 bit integer.
 function intHeader:setReplication(int)
 	int = int or 0
-	int = band(lshift(int, 4), 0x30) -- fill to 8 bits
-	
+	int = band(lshift(int, 2), 0xc) -- fill to 8 bits
+	--1100
 	old = self.ver_rep
-	old = band(old, 0xcf) -- remove old value
+	old = band(old, 0x03) -- remove old value -- 11
 	
 	self.ver_rep = bor(old, int)
 end
@@ -85,7 +97,7 @@ end
 --- Retrieve the replication.
 --- @return replication as 2 bit integer.
 function intHeader:getReplication()
-	return band(rshift(self.ver_rep, 4), 0x03)
+	return band(rshift(self.ver_rep, 2), 0x3f)
 end
 
 function intHeader:getReplicationString()
@@ -96,10 +108,10 @@ end
 --- @param int copy of the int header as 1 bit integer.
 function intHeader:setCopy(int)
 	int = int or 0
-	int = band(lshift(int, 3), 0x08) -- fill to 8 bits
-	
+	int = band(lshift(int, 1), 0x02) -- fill to 8 bits
+	--10
 	old = self.ver_rep
-	old = band(old, 0xf7) -- remove old value
+	old = band(old, 0x01) -- remove old value -- 01
 	
 	self.ver_rep = bor(old, int)
 end
@@ -107,7 +119,7 @@ end
 --- Retrieve the copy.
 --- @return copy as 1 bit integer.
 function intHeader:getCopy()
-	return band(rshift(self.ver_rep, 3), 0x01)
+	return band(rshift(self.ver_rep, 1), 0x7f)
 end
 
 function intHeader:getCopyString()
@@ -119,8 +131,7 @@ end
 --- @param int max hop count exceeded of the int header as 1 bit integer.
 function intHeader:setMaxHopCountExceeded(int)
 	int = int or 0
-	int = band(lshift(int, 2), 0x04) -- fill to 8 bits
-	
+
 	old = self.ver_rep
 	old = band(old, 0xfb) -- remove old value
 	
@@ -137,27 +148,147 @@ function intHeader:getMaxHopCountExceededString()
 	return self:getMaxHopCountExceeded()
 end
 
---- Set the instruction count.
---- @param int instruction count of the int header as 5 bit integer.
-function intHeader:setInstructionCount(int)
+--- Set the MTU exceeded.
+--- @param int MTU exceeded of the int header as 1 bit integer.
+function intHeader:setMTUExceeded(int)
 	int = int or 0
-	int = band(int, 0x1f) -- fill to 8 bits
+	int = band(lshift(int, 7), 0x7f) -- fill to 8 bits
+
+	old = self.byte2
+	old = band(old, 0x80) -- remove old value
+
+	self.byte2 = bor(old, int)
+end
+
+--- Retrieve the MTU exceeded.
+--- @return max hop count exceeded as 1 bit integer.
+function intHeader:getMTUExceeded()
+	return band(rshift(self.byte2, 7), 0x01)
+end
+
+function intHeader:getMTUExceededString()
+	return self:getMTUExceeded()
+end
+
+--- Set the Reserved Bits.
+--- @param int Reserved bits of the int header as 10 bit integer.
+function intHeader:setReserved1(int)
+	int = int or 0
+
+	-- 7bit in byte2 and 3 but in byte3
+
+	-- right 3 bits
+	right = band(int, 0x07)
+
+	old = band(self.byte3, 0xf8)
+
+	self.byte3 = band(right, old)
 	
-	old = self.ins_cnt
+	-- left 7 bits
+	left = band(rshift(int, 3), 0x7f) -- 7 bits
+
+	old = self.byte2
+	old = band(old, 0x80) -- remove old value
+
+	self.byte2 = bor(old, left)
+end
+
+--- Retrieve the Reserved bits .
+--- @return Reserved bits as 10 bit integer.
+function intHeader:getReserved1()
+	-- TODO
+	return 0
+end
+
+function intHeader:getReserved1String()
+	return self:getReserved1()
+end
+
+--- Set the Hop ML.
+--- @param int Hop ML of the int header as 5 bit integer.
+function intHeader:setHopML(int)
+	int = int or 0
+	int = bor(int, 0x1f)
+
+	old = self.byte3
 	old = band(old, 0xe0) -- remove old value
+
+	self.byte3 = bor(old, int)
+end
+
+--- Retrieve the Hop ML.
+--- @return Hop ML as 5 bit integer.
+function intHeader:getHopML()
+	return band(self.byte3, 0x7)
+end
+
+function intHeader:getHopMLString()
+	return self:getHopML()
+end
+
+--- Set the Remaining Hop Count.
+--- @param int Remaining Hop Count int header as 8 bit integer.
+function intHeader:setRemainingHopCount(int)
+	int = int or 0
+	self.remainingHopCount = int
+end
+
+--- Retrieve the Hop ML.
+--- @return Hop ML as 5 bit integer.
+function intHeader:getRemainingHopCount()
+	return self.remainingHopCount
+end
+
+function intHeader:getRemainingHopCount()
+	return self:getRemainingHopCount()
+end
+
+------------------------------------------------------
+--- Next Field InstructionBitmap 16 bit
+------------------------------------------------------
+
+--- Set the instruction count.
+--- @param int instruction count of the int header as 16 bit integer.
+function intHeader:setInstructionBitmap(int)
+	int = int or 0
 	
-	self.ins_cnt = bor(old, int)
+	self.InstructionBitmap = int
 end
 
 --- Retrieve the instruction count.
 --- @return Instruction count as 5 bit integer.
-function intHeader:getInstructionCount()
-	return band(self.ins_cnt, 0x1f)
+function intHeader:getInstructionBitmap()
+	return self.InstructionBitmap
 end
 
-function intHeader:getInstructionCountString()
-	return self:getInstructionCount()
+function intHeader:getInstructionBitmapString()
+	return self:getInstructionBitmap()
 end
+
+------------------------------------------------------
+--- Next Field Second Reserved 16 bit
+------------------------------------------------------
+--- Set the Reserved.
+--- @param int reserved2 the int header as 16 bit integer.
+function intHeader:setReserved(int)
+	int = int or 0
+
+	self.Reserved = int
+end
+
+--- Retrieve the Reserved2.
+--- @return Reserved2 as 16 bit integer.
+function intHeader:getReserved()
+	return self.Reserved
+end
+
+function intHeader:getReservedString()
+	return self:getReserved()
+end
+
+
+------------------------------------------------
+
 
 --- Set all members of the int header.
 --- Per default, all members are set to default values specified in the respective set function.
@@ -176,10 +307,12 @@ function intHeader:fill(args, pre)
 	self:setReplication(args[pre .. "Replication"])
 	self:setCopy(args[pre .. "Copy"])
 	self:setMaxHopCountExceeded(args[pre .. "MaxHopCountExceeded"])
-	self:setInstructionCount(args[pre .. "InstructionCount"])
-	self:setMaxHopCount(args[pre .. "MaxHopCount"])
-	self:setTotalHopCount(args[pre .. "TotalHopCount"])
+	self:setMTUExceeded(args[pre .. "MTUExceeded"])
+	self:setReserved1(args[pre .. "Reserved1"])
+	self:setHopML(args[pre .. "HopML"])
+	self:setRemainingHopCount(args[pre .. "RemainingHopCount"])
 	self:setInstructionBitmap(args[pre .. "InstructionBitmap"])
+	self:setReserved(args[pre .. "Reserved"])
 end
 
 --- Retrieve the values of all members.
@@ -194,10 +327,13 @@ function intHeader:get(pre)
 	args[pre .. "Replication"] = self:getReplication()
 	args[pre .. "Copy"] = self:getCopy()
 	args[pre .. "MaxHopCountExceeded"] = self:getMaxHopCountExceeded()
-	args[pre .. "InstructionCount"] = self:getInstructionCount()
+	args[pre .. "MTUExceeded"] = self:getMTUExceeded()
+	args[pre .. "Reserved1"] = self:getReserved1()
+	args[pre .. "HopML"] = self:getHopML()
+	args[pre .. "RemainingHopCount"] = self:getRemainingHopCount()
 	args[pre .. "MaxHopCount"] = self:getMaxHopCount()
-	args[pre .. "TotalHopCount"] = self:getTotalHopCount()
 	args[pre .. "InstructionBitmap"] = self:getInstructionBitmap()
+	args[pre .. "Reserved"] = self:getReserved()
 
 	return args
 end
@@ -209,9 +345,10 @@ function intHeader:getString()
 		.. " rep " .. self:getReplicationString()
 		.. " C " .. self:getCopyString()
 		.. " MHCE " .. self:getMaxHopCountExceededString()
-		.. " IC " .. self:getInstructionCountString()
+			.. " MTUE " .. self:getMTUExceededString()
+			.. " HopML " .. self:getgetHopMLString()
+		.. " RHC " .. self:getRemainingHopCount()
 		.. " MHC " .. self:getMaxHopCountString()
-		.. " THC " .. self:getTotalHopCountString()
 		.. " IB " .. self:getInstructionBitmapString()
 end
 
@@ -221,7 +358,7 @@ end
 --- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
 --- @return String next header (e.g. 'eth', 'ip4', nil)
 function intHeader:resolveNextHeader()
-	return nil
+	return 'eth'
 end	
 
 --- Change the default values for namedArguments (for fill/get)
@@ -239,8 +376,13 @@ function intHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 end
 
 function intHeader:getVariableLength()
-	return (self:getInstructionCount() * self:getTotalHopCount()) * 4
+	return 0
 end
+
+------------------------------------------------------------------------
+---- Meta
+------------------------------------------------------------------------
+
 
 ------------------------------------------------------------------------
 ---- Metatypes
