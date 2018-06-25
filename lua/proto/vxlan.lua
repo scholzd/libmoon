@@ -25,7 +25,7 @@ vxlan.nextProtocol = {
 	ip4 = 0x01,
 	ip6 = 0x02,
 	eth = 0x03,
-	int = 0x08
+	inbt = 0x08
 }
 
 ---------------------------------------------------------------------------
@@ -141,20 +141,20 @@ end
 --- @param int next protocol as 8 bit integer
 function vxlanGpeHeader:setNextProtocol(int)
 	int = int or vxlan.nextProtocol.eth
-	self.next_proto = int
+	self.next_protocol = int
 end
 
 --- Get the next protocol field
 --- @return next protocol as 8 bit integer
 function vxlanGpeHeader:getNextProtocol()
-	return self.next_proto
+	return self.next_protocol
 end
 
 --- Get the next protocol field as string
 --- @return next protocol as string
 function vxlanGpeHeader:getNextProtocolString()
 	val = self:getNextProtocol()
-	if val == vxlan.PROTO_INT then
+	if val == vxlan.nextProtocol.inbt then
 		return "INT"
 	else
 		return val
@@ -165,7 +165,7 @@ end
 --- @param int VXLAN header VNI as 24 bit integer.
 function vxlanHeader:setVNI(int)
 	int = int or 0
-	
+
 	-- X 3 2 1 ->  1 2 3
 	self.vni[0] = rshift(band(int, 0xFF0000), 16)
 	self.vni[1] = rshift(band(int, 0x00FF00), 8)
@@ -180,7 +180,7 @@ function vxlanHeader:getVNI()
 	return bor(lshift(self.vni[0], 16), bor(lshift(self.vni[1], 8), self.vni[2]))
 end
 
-vxlanGpeHeader.sgetVNI = vxlanHeader.getVNI
+vxlanGpeHeader.getVNI = vxlanHeader.getVNI
 
 --- Retrieve the VXLAN network identifier (VNI).
 --- @return VNI as string.

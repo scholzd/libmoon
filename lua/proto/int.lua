@@ -71,29 +71,30 @@ function intHeader:setVersion(int)
 	int = band(lshift(int, 4), 0xf0) -- fill to 8 bits
 	
 	old = self.ver_rep
-	old = band(old, 0xf) -- remove old value
+	old = band(old, 0x0f) -- remove old value
 	
-	self.ver_rep = bor(old, int)
+	val = bor(old, int)
+	self.ver_rep = val
 end
 
 --- Retrieve the version.
 --- @return version as 4 bit integer.
 function intHeader:getVersion()
-	return band(rshift(self.offset, 4), 0x0f)
+	return band(rshift(self.ver_rep, 4), 0x0f)
 end
 
 function intHeader:getVersionString()
-	return format("0x%01x", self:getVersion())
+	return self:getVersion()
 end
 
 --- Set the replication.
 --- @param int replication of the int header as 2 bit integer.
 function intHeader:setReplication(int)
 	int = int or 0
-	int = band(lshift(int, 2), 0xc) -- fill to 8 bits
+	int = band(lshift(int, 2), 0x0c) -- fill to 8 bits
 	--1100
 	old = self.ver_rep
-	old = band(old, 0x03) -- remove old value -- 11
+	old = band(old, 0xf3) -- remove old value -- 11
 	
 	self.ver_rep = bor(old, int)
 end
@@ -101,7 +102,7 @@ end
 --- Retrieve the replication.
 --- @return replication as 2 bit integer.
 function intHeader:getReplication()
-	return band(rshift(self.ver_rep, 2), 0x3f)
+	return band(rshift(self.ver_rep, 2), 0x03)
 end
 
 function intHeader:getReplicationString()
@@ -115,7 +116,7 @@ function intHeader:setCopy(int)
 	int = band(lshift(int, 1), 0x02) -- fill to 8 bits
 	--10
 	old = self.ver_rep
-	old = band(old, 0x01) -- remove old value -- 01
+	old = band(old, 0xfd) -- remove old value -- 01
 	
 	self.ver_rep = bor(old, int)
 end
@@ -123,7 +124,7 @@ end
 --- Retrieve the copy.
 --- @return copy as 1 bit integer.
 function intHeader:getCopy()
-	return band(rshift(self.ver_rep, 1), 0x7f)
+	return band(rshift(self.ver_rep, 1), 0x01)
 end
 
 function intHeader:getCopyString()
@@ -135,9 +136,10 @@ end
 --- @param int max hop count exceeded of the int header as 1 bit integer.
 function intHeader:setMaxHopCountExceeded(int)
 	int = int or 0
+	int = band(int, 0x01)
 
 	old = self.ver_rep
-	old = band(old, 0xfb) -- remove old value
+	old = band(old, 0xfe) -- remove old value
 	
 	self.ver_rep = bor(old, int)
 end
@@ -145,7 +147,7 @@ end
 --- Retrieve the max hop count exceeded.
 --- @return max hop count exceeded as 1 bit integer.
 function intHeader:getMaxHopCountExceeded()
-	return band(rshift(self.ver_rep, 2), 0x01)
+	return band(self.ver_rep, 0x01)
 end
 
 function intHeader:getMaxHopCountExceededString()
@@ -243,7 +245,7 @@ function intHeader:getRemainingHopCount()
 	return self.remainingHopCount
 end
 
-function intHeader:getRemainingHopCount()
+function intHeader:getRemainingHopCountString()
 	return self:getRemainingHopCount()
 end
 
@@ -256,13 +258,13 @@ end
 function intHeader:setInstructionBitmap(int)
 	int = int or 0
 	
-	self.InstructionBitmap = int
+	self.instructionBitmap = int
 end
 
 --- Retrieve the instruction count.
 --- @return Instruction count as 5 bit integer.
 function intHeader:getInstructionBitmap()
-	return self.InstructionBitmap
+	return self.instructionBitmap
 end
 
 function intHeader:getInstructionBitmapString()
@@ -277,13 +279,13 @@ end
 function intHeader:setReserved(int)
 	int = int or 0
 
-	self.Reserved = int
+	self.reserved2 = int
 end
 
 --- Retrieve the Reserved2.
 --- @return Reserved2 as 16 bit integer.
 function intHeader:getReserved()
-	return self.Reserved
+	return self.reserved2
 end
 
 function intHeader:getReservedString()
@@ -354,18 +356,18 @@ end
 --- @return Values in string format.
 function intHeader:getString()
 	return "INT SHIM type " .. self:getTypeString()
-		.. "r0 " .. self:getReserved0()
-		.. "len " .. self:getLength()
-		.. "next " .. self:getNextProtocol()
+		.. " r0 " .. self:getReserved0()
+		.. " len " .. self:getLength()
+		.. " next " .. self:getNextProtocol()
 		.. "\nINT ver " .. self:getVersionString()
 		.. " rep " .. self:getReplicationString()
 		.. " C " .. self:getCopyString()
-		.. " MHCE " .. self:getMaxHopCountExceededString()
-			.. " MTUE " .. self:getMTUExceededString()
-			.. " HopML " .. self:getgetHopMLString()
+		.. " E " .. self:getMaxHopCountExceededString()
+		.. " M " .. self:getMTUExceededString()
+		.. " HopML " .. self:getHopMLString()
 		.. " RHC " .. self:getRemainingHopCount()
-		.. " MHC " .. self:getMaxHopCountString()
 		.. " IB " .. self:getInstructionBitmapString()
+		.. " r2 " .. self:getReserved2()
 end
 
 --- Resolve which header comes after this one (in a packet)
