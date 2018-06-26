@@ -158,10 +158,10 @@ end
 --- @param int MTU exceeded of the int header as 1 bit integer.
 function intHeader:setMTUExceeded(int)
 	int = int or 0
-	int = band(lshift(int, 7), 0x7f) -- fill to 8 bits
+	int = band(lshift(int, 7), 0x80) -- fill to 8 bits
 
 	old = self.byte2
-	old = band(old, 0x80) -- remove old value
+	old = band(old, 0x7f) -- remove old value
 
 	self.byte2 = bor(old, int)
 end
@@ -180,15 +180,14 @@ end
 --- @param int Reserved bits of the int header as 10 bit integer.
 function intHeader:setReserved1(int)
 	int = int or 0
-
 	-- 7bit in byte2 and 3 but in byte3
 
 	-- right 3 bits
-	right = band(int, 0x07)
+	right = lshift(band(int, 0x07), 5)
 
-	old = band(self.byte3, 0xf8)
+	old = band(self.byte3, 0x1f)
 
-	self.byte3 = band(right, old)
+	self.byte3 = bor(right, old)
 	
 	-- left 7 bits
 	left = band(rshift(int, 3), 0x7f) -- 7 bits
@@ -214,7 +213,7 @@ end
 --- @param int Hop ML of the int header as 5 bit integer.
 function intHeader:setHopML(int)
 	int = int or 0
-	int = bor(int, 0x1f)
+	int = band(int, 0x1f)
 
 	old = self.byte3
 	old = band(old, 0xe0) -- remove old value
@@ -236,7 +235,7 @@ end
 --- @param int Remaining Hop Count int header as 8 bit integer.
 function intHeader:setRemainingHopCount(int)
 	int = int or 0
-	self.remainingHopCount = int
+	self.remainingHopCount = band(int, 0xff)
 end
 
 --- Retrieve the Hop ML.
@@ -258,7 +257,7 @@ end
 function intHeader:setInstructionBitmap(int)
 	int = int or 0
 	
-	self.instructionBitmap = int
+	self.instructionBitmap = band(int, 0xffff)
 end
 
 --- Retrieve the instruction count.
@@ -276,7 +275,7 @@ end
 ------------------------------------------------------
 --- Set the Reserved.
 --- @param int reserved2 the int header as 16 bit integer.
-function intHeader:setReserved(int)
+function intHeader:setReserved2(int)
 	int = int or 0
 
 	self.reserved2 = int
@@ -284,11 +283,11 @@ end
 
 --- Retrieve the Reserved2.
 --- @return Reserved2 as 16 bit integer.
-function intHeader:getReserved()
+function intHeader:getReserved2()
 	return self.reserved2
 end
 
-function intHeader:getReservedString()
+function intHeader:getReserved2String()
 	return self:getReserved()
 end
 
@@ -322,7 +321,7 @@ function intHeader:fill(args, pre)
 	self:setHopML(args[pre .. "HopML"])
 	self:setRemainingHopCount(args[pre .. "RemainingHopCount"])
 	self:setInstructionBitmap(args[pre .. "InstructionBitmap"])
-	self:setReserved(args[pre .. "Reserved"])
+	self:setReserved2(args[pre .. "Reserved2"])
 end
 
 --- Retrieve the values of all members.
@@ -347,7 +346,7 @@ function intHeader:get(pre)
 	args[pre .. "RemainingHopCount"] = self:getRemainingHopCount()
 	args[pre .. "MaxHopCount"] = self:getMaxHopCount()
 	args[pre .. "InstructionBitmap"] = self:getInstructionBitmap()
-	args[pre .. "Reserved"] = self:getReserved()
+	args[pre .. "Reserved2"] = self:getReserved2()
 
 	return args
 end
@@ -364,6 +363,7 @@ function intHeader:getString()
 		.. " C " .. self:getCopyString()
 		.. " E " .. self:getMaxHopCountExceededString()
 		.. " M " .. self:getMTUExceededString()
+		.. " r1 " .. self:getReserved1()
 		.. " HopML " .. self:getHopMLString()
 		.. " RHC " .. self:getRemainingHopCount()
 		.. " IB " .. self:getInstructionBitmapString()
