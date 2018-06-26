@@ -313,7 +313,7 @@ end
 --- @return String next header (e.g. 'udp', 'icmp', nil)
 function vxlanHeader:resolveNextHeader()
 	return 'eth'
-end	
+end
 
 --- Resolve which header comes after this one (in a packet).
 --- For instance: in tcp/udp based on the ports.
@@ -321,14 +321,14 @@ end
 --- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
 --- @return String next header (e.g. 'udp', 'icmp', nil)
 function vxlanGpeHeader:resolveNextHeader()
-	local type = self:getNextHeader()
-	for name, _type in pairs(vxlan.nextHeader) do
+	local type = self:getNextProtocol()
+	for name, _type in pairs(vxlan.nextProtocol) do
 		if type == _type then
 			return name
 		end
 	end
 	return nil
-end	
+end
 
 function vxlanHeader:getSubType()
 	if band(self:getFlags(), 0x04) then

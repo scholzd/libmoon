@@ -11,6 +11,7 @@
 local ffi = require "ffi"
 local log = require "log"
 require "proto.template"
+local vxlan = require "proto.vxlan"
 local initHeader = initHeader
 
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
@@ -376,7 +377,14 @@ end
 --- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
 --- @return String next header (e.g. 'eth', 'ip4', nil)
 function intHeader:resolveNextHeader()
-	return self:getNextProtocol()
+	-- this is based on the same values vxlan gpe uses
+	local type = self:getNextProtocol()
+	for name, _type in pairs(vxlan.nextProtocol) do
+		if type == _type then
+			return name
+		end
+	end
+	return nil
 end	
 
 --- Change the default values for namedArguments (for fill/get)
