@@ -6,6 +6,7 @@ local log    = require "log"
 local memory = require "memory"
 local arp    = require "proto.arp"
 local server = require "webserver"
+local proto  = require "proto.proto"
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -91,29 +92,40 @@ end
 
 function txSlave(queue, dstMac)
 	-- memory pool with default values for all packets, this is our archetype
+	local asVxlanIntPacketX = createStack("eth", "ip4", "udp", { "vxlan", subType = "gpe" }, { "inbt", length = 1 })
 	local mempool = memory.createMemPool(function(buf)
-		buf:getUdpPacket():fill{
+		asVxlanIntPacketX(buf):fill{
 			-- fields not explicitly set here are initialized to reasonable defaults
 			ethSrc = queue, -- MAC of the tx device
 			ethDst = dstMac,
 			ip4Src = SRC_IP,
 			ip4Dst = DST_IP,
-			udpSrc = SRC_PORT,
-			udpDst = DST_PORT,
+			vxlanNextProtocol = proto.vxlan.nextProtocol.inbt,
+			inbtRemainingHopCount = 0xffffffff,
+			inbtInstructionBitmap = 0xeeeeeeee,
+			inbtLength = 4,
+			inbtReserved2 = 0xddddddd,
 			pktLength = PKT_LEN
 		}
 	end)
 	-- a bufArray is just a list of buffers from a mempool that is processed as a single batch
-	local bufs = mempool:bufArray()
+	local bufs = mempool:bufArray(1)
 	while lm.running() do -- check if Ctrl+c was pressed
 		-- this actually allocates some buffers from the mempool the array is associated with
 		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
 		bufs:alloc(PKT_LEN)
 		for i, buf in ipairs(bufs) do
 			-- packet framework allows simple access to fields in complex protocol stacks
-			local pkt = buf:getUdpPacket()
-			pkt.udp:setSrcPort(SRC_PORT_BASE + math.random(0, NUM_FLOWS - 1))
+			local pkt = asVxlanIntPacketX(buf)
+			pkt:dump()
+			meta = pkt.inbt:getMetadata()
+			pkt.inbt:setMetadata(0, 0x12345678)
+			meta2 = pkt.inbt:getMetadata()
+			log:info(tostring(meta2[0]))
+			pkt:dump()
+			buf:dump()
 		end
+		break
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
 		-- UDP checksum offloading is comparatively slow: NICs typically do not support calculating the pseudo-header checksum so this is done in SW
 		bufs:offloadUdpChecksums()
