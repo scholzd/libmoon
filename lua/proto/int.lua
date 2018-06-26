@@ -404,13 +404,36 @@ end
 
 function intHeader:getVariableLength()
 	-- in 4 byte words, 3 for shim and int header
-	return (self:getLength() - 3) * 4
+	return self:getLength() - 3
 end
 
 ------------------------------------------------------------------------
----- Meta
+---- INT metadata 
 ------------------------------------------------------------------------
 
+function intHeader:getMetadata(idx)
+	len = self:getVariableLength()
+	if idx then
+		if idx < len then
+			return self.metadata[idx]
+		else
+			-- idx outside metadata
+			return nil
+		end
+	else
+		meta = {}
+		for i = 0, len do
+			meta[i] = self.metadata[i]
+		end
+		return meta
+	end
+end
+
+-- set 32bit of metadata at offset
+function intHeader:setMetadata(offset, uint32)
+	self.metadata[offset] = uint32
+	return offset + 1
+end
 
 ------------------------------------------------------------------------
 ---- Metatypes
