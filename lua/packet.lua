@@ -530,6 +530,16 @@ function packetResolveLastHeader(self)
 			sub[#sub] = subType
 			
 			local newName = table.concat(sub, "_")
+			if not pkt.packetStructs[newName] then
+				local args = self:getArgs()
+				local last = args[#args]
+				if type(last) == 'string' then
+					args[#args] = { last, last, subType = subType}
+				else
+					args[#args]['subType'] = subType
+				end
+				pkt.TMP_PACKET = createStack(unpack(args))
+			end
 			return ffi.cast(newName .. "*", self):resolveLastHeader()
 		end
 	end
