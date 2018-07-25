@@ -197,14 +197,24 @@ function mod.config(args)
 	end
 	local dev = mod.get(args.port)
 	dev.initialized = true
-	dev:store()
 	if args.rssQueues > 1 then
 		dev:setRssQueues(args.rssQueues, args.rssBaseQueue)
 	end
 	if dev.init then
 		dev:init()
 	end
+	dev:store()
 	dev:setPromisc(true)
+	if dev:getDriverName():match("i40e") then
+		local fw = dev:getFirmware()
+		if fw:match("^%s*5.05") then
+			log:warn(
+				"Device %s is an i40e NIC with firmware 5.05 which has known bugs related to timestamping.\n" ..
+				"Refer to Intel's errata sheet for more information. Downgrade to 5.04 or upgrade to 6.x to fix this.",
+				dev
+			)
+		end
+	end
 	return dev
 end
 
@@ -242,7 +252,7 @@ function dev:setRssQueues(n, baseQueue)
 	end
 	local ret = ffi.C.rte_eth_dev_rss_reta_update(self.id, entries, retaSize)
 	if ret ~= 0 then
-		log:fatal("Error setting up RETA table: " .. errors.getstr(-ret))
+		log:fatal("Error setting up RETA table: " .. strError(ret))
 	end
 end
 
@@ -400,6 +410,17 @@ end
 
 function dev:getMac(number)
 	return parseMacAddress(self:getMacString(), number)
+end
+
+function dev:getFirmware()
+	local buf = ffi.new("char[1024]")
+	local rc = dpdkc.rte_eth_dev_fw_version_get(self.id, buf, 1024);
+	if rc ~= 0 then
+		log:warn("Failed to get firmware version: %d", rc)
+		return nil
+	else
+		return ffi.string(buf)
+	end
 end
 
 function dev:setPromisc(enable)
@@ -827,12 +848,12 @@ function rxQueue:recvWithTimestamps(bufArray, numpkts)
 	return dpdkc.dpdk_receive_with_timestamps_software(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 end
 
-function rxQueue:getMacAddr()
-  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+function rxQueue:getMacAddr(number)
+  return self.dev:getMac(number)
 end
 
-function txQueue:getMacAddr()
-  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+function txQueue:getMacAddr(number)
+  return self.dev:getMac(number)
 end
 
 --- Receive packets from a rx queue with a timeout.
