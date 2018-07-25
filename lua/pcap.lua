@@ -157,7 +157,7 @@ local function readHeader(ptr)
 		log:warn("timezone information in pcap header ignored")
 	end
 	if hdr.network ~= 1 then
-		log:fatal("unsupported link layer type")
+		log:error("unsupported link layer type")
 	end
 	return ffi.sizeof(headerType)
 end
@@ -197,7 +197,7 @@ function reader:readSingle(mempool, mempoolBufSize)
 	if buf then
 		self.offset = self.offset + buf.pkt_len + 16
 		-- chained mbufs not supported for now
-		buf.pkt_len = buf.data_len
+		buf.pkt_len = buf.data_len + 14
 	end
 	return buf
 end
